@@ -1,75 +1,184 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { generateReading } from '../lib/gemini';
-import { READING_QUESTION_TYPES } from '../data/ieltsContent';
+import { lookupWord } from '../lib/vocabApi';
+import { supabase } from '../lib/supabase';
+import { READING_QUESTION_TYPES, topicForDay } from '../data/ieltsContent';
+import { OFFICIAL_PASSAGES } from '../data/officialReadingPassages';
+import { theme } from '../styles/theme';
 
-export default function ReadingTab() {
-  const [questionType, setQuestionType] = useState(READING_QUESTION_TYPES[0].type);
-  const [topic, setTopic] = useState('');
+function cleanWord(raw) {
+  return raw.replace(/[^a-zA-Z'-]/g, '');
+}
+
+export default function ReadingTab({ user, selectedDay }) {
   const [practice, setPractice] = useState(null);
+  const [isOfficial, setIsOfficial] = useState(false);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState('');
 
-  const typeInfo = READING_QUESTION_TYPES.find(t => t.type === questionType);
+  const [lookup, setLookup] = useState(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [savedWord, setSavedWord] = useState('');
 
-  async function handleGenerate() {
-    setLoading(true); setError(''); setPractice(null); setShowResults(false); setAnswers({});
+  const officialForDay = selectedDay <= OFFICIAL_PASSAGES.length ? OFFICIAL_PASSAGES[selectedDay - 1] : null;
+  const dayTopic = topicForDay(selectedDay);
+
+  useEffect(() => {
+    setAnswers({});
+    setShowResults(false);
+    setLookup(null);
+    if (officialForDay) {
+      setPractice({
+        passage: officialForDay.passage,
+        instructions: officialForDay.instructions,
+        questions: officialForDay.questions,
+        title: officialForDay.title,
+        questionType: officialForDay.questionType,
+      });
+      setIsOfficial(true);
+    } else {
+      setPractice(null);
+      setIsOfficial(false);
+    }
+  }, [selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleGenerateAI() {
+    setLoading(true); setError(''); setShowResults(false); setAnswers({}); setLookup(null);
     try {
-      const data = await generateReading(questionType, topic || 'a general academic topic');
-      setPractice(data);
+      const randomType = READING_QUESTION_TYPES[Math.floor(Math.random() * READING_QUESTION_TYPES.length)];
+      const styleRef = OFFICIAL_PASSAGES[Math.floor(Math.random() * OFFICIAL_PASSAGES.length)].passage;
+      const data = await generateReading(randomType.type, dayTopic, styleRef);
+      setPractice({ ...data, title: dayTopic, questionType: randomType.type });
+      setIsOfficial(false);
     } catch (err) {
       setError('Generation failed: ' + err.message);
     }
     setLoading(false);
   }
 
-  const score = practice ? practice.questions.filter(q => (answers[q.number] || '').trim().toLowerCase() === q.answer.trim().toLowerCase()).length : 0;
+  async function handleWordClick(rawWord) {
+    const word = cleanWord(rawWord).toLowerCase();
+    if (!word || word.length < 2) return;
+    setLookupLoading(true);
+    setLookup({ word });
+    setSavedWord('');
+    try {
+      const data = await lookupWord(word);
+      setLookup(data);
+    } catch (err) {
+      setLookup({ word, meaning: 'Lookup failed — try again.' });
+    }
+    setLookupLoading(false);
+  }
+
+  async function handleSave() {
+    if (!lookup || !lookup.word) return;
+    await supabase.from('vocab').insert({
+      user_id: user.id,
+      word: lookup.word,
+      meaning: lookup.meaning,
+      synonyms: (lookup.synonyms || []).join(', '),
+      antonyms: (lookup.antonyms || []).join(', '),
+      example_sentence: lookup.example || '',
+    });
+    setSavedWord(lookup.word);
+  }
+
+  function renderClickablePassage(text) {
+    const paragraphs = text.split(/\n\n+/);
+    return paragraphs.map((para, pi) => (
+      <p key={pi} style={s.paragraph}>
+        {para.split(/(\s+)/).map((token, ti) =>
+          /\s+/.test(token) ? token : (
+            <span key={ti} style={s.clickableWord} onClick={() => handleWordClick(token)}>
+              {token}
+            </span>
+          )
+        )}
+      </p>
+    ));
+  }
+
+  const score = practice ? practice.questions.filter(q => (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase()).length : 0;
 
   return (
     <section style={s.section}>
-      <h2 style={s.title}>Reading Practice</h2>
-      <p style={s.hint}>Real question-type rules baked in below. AI generates a fresh passage each time — treat it as practice technique, not authentic Cambridge material.</p>
+      <h2 style={s.title}>Reading Practice — Day {selectedDay}</h2>
 
-      <div style={s.ruleBox}>
-        <strong>{typeInfo.type}</strong> — {typeInfo.note} <em>({typeInfo.order})</em>
-      </div>
+      {officialForDay ? (
+        <p style={s.hint}>
+          <span style={s.officialBadge}>✓ Official IELTS sample material</span> — from {officialForDay.source}.
+          This is real, unmodified content. Click any word to look it up and save it to your vocabulary.
+        </p>
+      ) : (
+        <p style={s.hint}>
+          You've worked through all {OFFICIAL_PASSAGES.length} official sample passages. From here, practice is
+          {' '}<span style={s.aiBadge}>AI-generated</span>, styled after real IELTS passages but not authentic material.
+          Today's topic: <strong style={{ color: theme.colors.lavender }}>{dayTopic}</strong>.
+        </p>
+      )}
 
-      <div style={s.form}>
-        <select style={s.input} value={questionType} onChange={e => setQuestionType(e.target.value)}>
-          {READING_QUESTION_TYPES.map(t => <option key={t.type} value={t.type}>{t.type}</option>)}
-        </select>
-        <input style={s.input} placeholder="Topic (optional, e.g. climate, urbanization)" value={topic} onChange={e => setTopic(e.target.value)} />
-        <button style={s.button} onClick={handleGenerate} disabled={loading}>{loading ? 'Generating…' : 'Generate practice'}</button>
-      </div>
+      {!officialForDay && !practice && (
+        <button style={s.button} onClick={handleGenerateAI} disabled={loading}>
+          {loading ? 'Generating…' : `Generate today's passage`}
+        </button>
+      )}
 
       {error && <p style={s.error}>{error}</p>}
 
       {practice && (
-        <div style={s.card}>
-          <p style={s.passage}>{practice.passage}</p>
-          <p style={s.instructions}>{practice.instructions}</p>
-          {practice.questions.map(q => (
-            <div key={q.number} style={s.qRow}>
-              <label style={s.qLabel}>{q.number}. {q.question}</label>
-              <input
-                style={s.qInput}
-                value={answers[q.number] || ''}
-                onChange={e => setAnswers({ ...answers, [q.number]: e.target.value })}
-                disabled={showResults}
-              />
-              {showResults && (
-                <span style={{ color: (answers[q.number] || '').trim().toLowerCase() === q.answer.trim().toLowerCase() ? '#4ade80' : '#f87171', fontSize: 12 }}>
-                  Correct answer: {q.answer}
-                </span>
-              )}
+        <div style={s.layout}>
+          <div style={s.card}>
+            <div style={s.cardHeader}>
+              <h3 style={s.passageTitle}>{practice.title}</h3>
+              <span style={isOfficial ? s.officialTag : s.aiTag}>{isOfficial ? 'Official' : 'AI-generated'}</span>
             </div>
-          ))}
-          {!showResults ? (
-            <button style={s.button} onClick={() => setShowResults(true)}>Check answers</button>
-          ) : (
-            <p style={s.scoreText}>Score: {score} / {practice.questions.length}</p>
-          )}
+            <p style={s.questionTypeLabel}>{practice.questionType}</p>
+
+            {renderClickablePassage(practice.passage)}
+
+            <p style={s.instructions}>{practice.instructions}</p>
+            {practice.questions.map(q => (
+              <div key={q.number} style={s.qRow}>
+                <label style={s.qLabel}>{q.number}. {q.question}</label>
+                <input
+                  style={s.qInput}
+                  value={answers[q.number] || ''}
+                  onChange={e => setAnswers({ ...answers, [q.number]: e.target.value })}
+                  disabled={showResults}
+                />
+                {showResults && (
+                  <span style={{ color: (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase() ? '#4ade80' : '#f87171', fontSize: 12 }}>
+                    Correct answer: {q.answer}
+                  </span>
+                )}
+              </div>
+            ))}
+            {!showResults ? (
+              <button style={s.button} onClick={() => setShowResults(true)}>Check answers</button>
+            ) : (
+              <p style={s.scoreText}>Score: {score} / {practice.questions.length}</p>
+            )}
+          </div>
+
+          <div style={s.sidebar}>
+            <h3 style={s.sidebarTitle}>Word lookup</h3>
+            {!lookup && <p style={s.hint}>Click any word in the passage to look it up here.</p>}
+            {lookupLoading && <p style={s.hint}>Looking up…</p>}
+            {lookup && !lookupLoading && (
+              <div>
+                <p style={s.lookupWord}>{lookup.word}</p>
+                {lookup.phonetic && <p style={s.lookupPhonetic}>{lookup.phonetic}</p>}
+                <p style={s.lookupMeaning}>{lookup.meaning}</p>
+                {lookup.synonyms?.length > 0 && <p style={s.lookupTag}><strong>Synonyms:</strong> {lookup.synonyms.join(', ')}</p>}
+                {lookup.antonyms?.length > 0 && <p style={s.lookupTag}><strong>Antonyms:</strong> {lookup.antonyms.join(', ')}</p>}
+                <button style={s.saveBtn} onClick={handleSave}>Save to vocabulary</button>
+                {savedWord === lookup.word && <p style={s.savedMsg}>✓ Saved</p>}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </section>
@@ -77,19 +186,33 @@ export default function ReadingTab() {
 }
 
 const s = {
-  section: { background: '#1e293b', borderRadius: 12, padding: 20 },
-  title: { fontSize: 18, margin: '0 0 8px' },
-  hint: { color: '#94a3b8', fontSize: 12, marginBottom: 12 },
-  ruleBox: { background: '#0f172a', borderRadius: 8, padding: 12, fontSize: 13, color: '#cbd5e1', marginBottom: 16 },
-  form: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 },
-  input: { padding: '10px 12px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 14 },
-  button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
+  section: { background: theme.colors.card, borderRadius: theme.radius.card, padding: 20 },
+  title: { fontSize: 18, margin: '0 0 8px', color: theme.colors.text },
+  hint: { color: theme.colors.textMuted, fontSize: 12, marginBottom: 12, lineHeight: 1.6 },
+  officialBadge: { color: '#4ade80', fontWeight: 700 },
+  aiBadge: { color: theme.colors.coral, fontWeight: 700 },
+  button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: theme.colors.lavender, color: 'white', fontWeight: 600, cursor: 'pointer' },
   error: { color: '#f87171', fontSize: 13 },
-  card: { background: '#0f172a', borderRadius: 10, padding: 16 },
-  passage: { fontSize: 14, lineHeight: 1.6, marginBottom: 12, whiteSpace: 'pre-wrap' },
-  instructions: { fontSize: 13, color: '#a5b4fc', marginBottom: 12, fontWeight: 600 },
+  layout: { display: 'grid', gridTemplateColumns: '1fr', gap: 16 },
+  card: { background: theme.colors.bg, borderRadius: 10, padding: 16 },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 2 },
+  passageTitle: { fontSize: 16, margin: 0, color: theme.colors.text },
+  officialTag: { fontSize: 10, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
+  aiTag: { fontSize: 10, fontWeight: 700, color: theme.colors.coral, background: theme.colors.coral + '22', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
+  questionTypeLabel: { fontSize: 12, color: theme.colors.lavender, marginBottom: 12 },
+  paragraph: { fontSize: 14, lineHeight: 1.8, marginBottom: 14 },
+  clickableWord: { cursor: 'pointer', borderBottom: `1px dotted ${theme.colors.textMuted}`, transition: 'color 0.15s' },
+  instructions: { fontSize: 13, color: '#a5b4fc', marginBottom: 12, fontWeight: 600, whiteSpace: 'pre-wrap' },
   qRow: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 },
   qLabel: { fontSize: 14 },
-  qInput: { padding: '8px 10px', borderRadius: 6, border: '1px solid #334155', background: '#1e293b', color: '#f1f5f9', fontSize: 14 },
+  qInput: { padding: '8px 10px', borderRadius: 6, border: `1px solid ${theme.colors.border}`, background: theme.colors.card, color: theme.colors.text, fontSize: 14 },
   scoreText: { fontSize: 16, fontWeight: 700, color: '#4ade80' },
+  sidebar: { background: theme.colors.bg, borderRadius: 10, padding: 16, position: 'sticky', top: 12, alignSelf: 'start' },
+  sidebarTitle: { fontSize: 14, margin: '0 0 10px', color: theme.colors.text },
+  lookupWord: { fontSize: 20, fontWeight: 700, textTransform: 'capitalize', margin: '0 0 4px', color: theme.colors.text },
+  lookupPhonetic: { fontSize: 13, color: theme.colors.lavender, margin: '0 0 8px' },
+  lookupMeaning: { fontSize: 14, margin: '0 0 10px', lineHeight: 1.5 },
+  lookupTag: { fontSize: 13, color: '#cbd5e1', margin: '4px 0' },
+  saveBtn: { marginTop: 10, padding: '8px 14px', borderRadius: 8, border: 'none', background: theme.colors.lavender, color: 'white', fontSize: 13, cursor: 'pointer' },
+  savedMsg: { color: '#4ade80', fontSize: 12, marginTop: 6 },
 };
