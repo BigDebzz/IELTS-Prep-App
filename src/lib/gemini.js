@@ -22,8 +22,8 @@ export const scoreSpeaking = (part, question, transcript) =>
 export const generateListening = (section, topic) =>
   callGemini('generate_listening', { section, topic });
 
-export const generateReading = (questionType, topic) =>
-  callGemini('generate_reading', { questionType, topic });
+export const generateReading = (questionType, topic, styleReference) =>
+  callGemini('generate_reading', { questionType, topic, styleReference });
 
 export const checkVocabSentence = (word, sentence) =>
   callGemini('vocab_sentence_check', { word, sentence });
