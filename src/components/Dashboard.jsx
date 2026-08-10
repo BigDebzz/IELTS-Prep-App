@@ -42,6 +42,7 @@ export default function Dashboard({ user }) {
   return (
     <div style={s.page}>
       <div style={s.shell}>
+        {/* Top nav — pill-shaped like the reference */}
         <header style={s.header}>
           <div style={s.brand}>
             <span style={s.brandMark}>◆</span>
@@ -60,6 +61,7 @@ export default function Dashboard({ user }) {
           </div>
         </header>
 
+        {/* Day calendar strip — borrowed from reference's month calendar concept */}
         <div style={s.dayBar}>
           <div style={s.dayBarTop}>
             <div>
@@ -91,7 +93,7 @@ export default function Dashboard({ user }) {
         <main style={s.main}>
           {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
           {tab === 'vocabulary' && <VocabularyTab user={user} />}
-          {tab === 'reading' && <ReadingTab />}
+          {tab === 'reading' && <ReadingTab user={user} selectedDay={selectedDay} />}
           {tab === 'listening' && <ListeningTab />}
           {tab === 'writing' && <WritingTab user={user} selectedDay={selectedDay} />}
           {tab === 'speaking' && <SpeakingTab user={user} selectedDay={selectedDay} />}
