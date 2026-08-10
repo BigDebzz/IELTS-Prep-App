@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { getTasksForDay, weekForDay, SKILL_COLORS, SKILL_LABELS } from '../data/planData';
+import ProgressCard from './ProgressCard';
 
 export async function ensureSeeded(userId) {
   const { count, error: countErr } = await supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('user_id', userId);
@@ -36,31 +37,39 @@ export default function TasksTab({ user, selectedDay }) {
 
   const dayTasks = useMemo(() => tasks.filter(t => t.day_number === selectedDay), [tasks, selectedDay]);
   const week = weekForDay(selectedDay);
+  const doneCount = dayTasks.filter(t => t.done).length;
 
   if (loading) return <p style={s.hint}>Loading tasks…</p>;
 
   return (
-    <section style={s.section}>
-      <div style={s.dayHeader}>
-        <h2 style={s.title}>Day {selectedDay}</h2>
-        {week && <span style={s.weekBadge}>{week.label}</span>}
-      </div>
-      {week && <p style={s.weekFocus}>{week.focus}</p>}
+    <>
+      <ProgressCard user={user} />
 
-      {dayTasks.length === 0 && <p style={s.hint}>No tasks for this day.</p>}
+      <section style={s.section}>
+        <div style={s.dayHeader}>
+          <h2 style={s.title}>Day {selectedDay}</h2>
+          {week && <span style={s.weekBadge}>{week.label}</span>}
+        </div>
+        {week && <p style={s.weekFocus}>{week.focus}</p>}
+        {dayTasks.length > 0 && (
+          <p style={s.progressText}>{doneCount} of {dayTasks.length} done</p>
+        )}
 
-      <ul style={s.list}>
-        {dayTasks.map(task => (
-          <li key={task.id} style={s.item}>
-            <label style={s.label}>
-              <input type="checkbox" checked={task.done} onChange={() => toggle(task)} style={s.checkbox} />
-              <span style={{ ...s.tag, background: SKILL_COLORS[task.skill] + '22', color: SKILL_COLORS[task.skill] }}>{SKILL_LABELS[task.skill]}</span>
-              <span style={{ ...s.text, ...(task.done ? s.done : {}) }}>{task.title}</span>
-            </label>
-          </li>
-        ))}
-      </ul>
-    </section>
+        {dayTasks.length === 0 && <p style={s.hint}>No tasks for this day.</p>}
+
+        <ul style={s.list}>
+          {dayTasks.map(task => (
+            <li key={task.id} style={s.item}>
+              <label style={s.label}>
+                <input type="checkbox" checked={task.done} onChange={() => toggle(task)} style={s.checkbox} />
+                <span style={{ ...s.tag, background: SKILL_COLORS[task.skill] + '22', color: SKILL_COLORS[task.skill] }}>{SKILL_LABELS[task.skill]}</span>
+                <span style={{ ...s.text, ...(task.done ? s.done : {}) }}>{task.title}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
   );
 }
 
@@ -70,7 +79,8 @@ const s = {
   hint: { color: '#94a3b8', fontSize: 13 },
   dayHeader: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 },
   weekBadge: { fontSize: 11, background: '#33415522', color: '#a5b4fc', padding: '4px 10px', borderRadius: 20 },
-  weekFocus: { color: '#94a3b8', fontSize: 13, marginBottom: 16 },
+  weekFocus: { color: '#94a3b8', fontSize: 13, marginBottom: 8 },
+  progressText: { color: '#818cf8', fontSize: 12, fontWeight: 600, marginBottom: 16 },
   list: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 },
   item: {},
   label: { display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' },
