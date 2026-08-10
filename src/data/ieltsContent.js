@@ -93,3 +93,42 @@ export const LISTENING_SECTIONS = [
 export const VOCAB_TOPICS_TO_PRIORITIZE = [
   'environment', 'technology', 'health', 'education', 'work', 'crime', 'society', 'globalization',
 ];
+
+// Daily academic reading topics — real IELTS Academic Reading subject areas,
+// rotated by day number so each day of the 30-day plan gets a different topic.
+export const DAILY_READING_TOPICS = [
+  'Climate change and renewable energy',
+  'Artificial intelligence and automation',
+  'Ocean ecosystems and marine biology',
+  'Ancient civilizations and archaeology',
+  'Public health and epidemiology',
+  'Space exploration and astronomy',
+  'Urban planning and city design',
+  'Psychology and human behaviour',
+  'Renewable agriculture and food security',
+  'Linguistics and the evolution of language',
+  'Neuroscience and brain development',
+  'Economics and global trade',
+  'Biodiversity and conservation',
+  'History of scientific discovery',
+  'Educational theory and learning methods',
+  'Genetics and biotechnology',
+  'Sociology and demographic change',
+  'Engineering and infrastructure',
+  'Media, journalism and misinformation',
+  'Anthropology and cultural evolution',
+  'Water resources and sustainability',
+  'Animal cognition and behaviour',
+  'The history of medicine',
+  'Renewable materials and industrial design',
+  'Migration and globalization',
+  'Volcanology and geology',
+  'The history of art and architecture',
+  'Cognitive science and memory',
+  'Renewable energy policy',
+  'Astrobiology and the search for life',
+];
+
+export function topicForDay(day) {
+  return DAILY_READING_TOPICS[(day - 1) % DAILY_READING_TOPICS.length];
+}
