@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { signOut } from '../lib/useAuth';
+import { theme } from '../styles/theme';
 import TasksTab from './TasksTab';
 import VocabularyTab from './VocabularyTab';
 import ReadingTab from './ReadingTab';
 import ListeningTab from './ListeningTab';
 import WritingTab from './WritingTab';
 import SpeakingTab from './SpeakingTab';
+import { weekForDay } from '../data/planData';
 
 function dayFromStart(startDate) {
   const start = new Date(startDate);
@@ -25,7 +27,7 @@ export default function Dashboard({ user }) {
   }, [startDate]);
 
   const tabs = [
-    { key: 'tasks', label: 'Daily Tasks' },
+    { key: 'tasks', label: 'Today' },
     { key: 'vocabulary', label: 'Vocabulary' },
     { key: 'reading', label: 'Reading' },
     { key: 'listening', label: 'Listening' },
@@ -33,55 +35,98 @@ export default function Dashboard({ user }) {
     { key: 'speaking', label: 'Speaking' },
   ];
 
+  const initials = (user.email || '?').slice(0, 2).toUpperCase();
+  const week = weekForDay(selectedDay);
+  const today = dayFromStart(startDate);
+
   return (
-    <div style={s.wrap}>
-      <header style={s.header}>
-        <div>
-          <h1 style={s.h1}>IELTS Prep System</h1>
-          <p style={s.sub}>{user.email}</p>
+    <div style={s.page}>
+      <div style={s.shell}>
+        <header style={s.header}>
+          <div style={s.brand}>
+            <span style={s.brandMark}>◆</span>
+            <span style={s.brandName}>IELTS Prep</span>
+          </div>
+          <nav style={s.nav}>
+            {tabs.map(t => (
+              <button key={t.key} onClick={() => setTab(t.key)} style={{ ...s.navBtn, ...(tab === t.key ? s.navBtnActive : {}) }}>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+          <div style={s.headerRight}>
+            <div style={s.avatar}>{initials}</div>
+            <button style={s.logoutBtn} onClick={signOut}>Sign out</button>
+          </div>
+        </header>
+
+        <div style={s.dayBar}>
+          <div style={s.dayBarTop}>
+            <div>
+              <p style={s.dayBarLabel}>Day {selectedDay} of 30{selectedDay === today ? ' · Today' : ''}</p>
+              {week && <p style={s.weekLabel}>{week.label}</p>}
+            </div>
+            <label style={s.dateLabel}>
+              Start date
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={s.dateInput} />
+            </label>
+          </div>
+          <div style={s.dayPills}>
+            {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
+              <button
+                key={d}
+                onClick={() => setSelectedDay(d)}
+                style={{
+                  ...s.dayPill,
+                  ...(d === selectedDay ? s.dayPillActive : {}),
+                  ...(d === today && d !== selectedDay ? s.dayPillToday : {}),
+                }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
         </div>
-        <div style={s.headerRight}>
-          <label style={s.dateLabel}>
-            Start date: <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={s.dateInput} />
-          </label>
-          <button style={s.logoutBtn} onClick={signOut}>Sign out</button>
-        </div>
-      </header>
 
-      <div style={s.dayGrid}>
-        {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
-          <button key={d} onClick={() => setSelectedDay(d)} style={{ ...s.dayBtn, background: d === selectedDay ? '#6366f1' : '#1e293b' }}>{d}</button>
-        ))}
+        <main style={s.main}>
+          {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
+          {tab === 'vocabulary' && <VocabularyTab user={user} />}
+          {tab === 'reading' && <ReadingTab />}
+          {tab === 'listening' && <ListeningTab />}
+          {tab === 'writing' && <WritingTab user={user} selectedDay={selectedDay} />}
+          {tab === 'speaking' && <SpeakingTab user={user} selectedDay={selectedDay} />}
+        </main>
       </div>
-
-      <div style={s.tabs}>
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{ ...s.tabBtn, ...(tab === t.key ? s.tabBtnActive : {}) }}>{t.label}</button>
-        ))}
-      </div>
-
-      {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
-      {tab === 'vocabulary' && <VocabularyTab user={user} />}
-      {tab === 'reading' && <ReadingTab />}
-      {tab === 'listening' && <ListeningTab />}
-      {tab === 'writing' && <WritingTab user={user} selectedDay={selectedDay} />}
-      {tab === 'speaking' && <SpeakingTab user={user} selectedDay={selectedDay} />}
     </div>
   );
 }
 
 const s = {
-  wrap: { minHeight: '100vh', background: '#0f172a', color: '#f1f5f9', padding: '24px 16px', maxWidth: 900, margin: '0 auto' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  h1: { fontSize: 20, margin: 0 },
-  sub: { color: '#94a3b8', fontSize: 13, margin: '4px 0 0' },
-  headerRight: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  dateLabel: { fontSize: 13, color: '#94a3b8' },
-  dateInput: { background: '#1e293b', border: '1px solid #334155', color: '#f1f5f9', borderRadius: 6, padding: '4px 8px', marginLeft: 4 },
-  logoutBtn: { background: 'none', border: '1px solid #334155', color: '#94a3b8', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 13 },
-  dayGrid: { display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6, marginBottom: 16 },
-  dayBtn: { border: 'none', borderRadius: 6, color: '#f1f5f9', padding: '8px 0', cursor: 'pointer', fontSize: 13 },
-  tabs: { display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap', borderBottom: '1px solid #1e293b', paddingBottom: 4 },
-  tabBtn: { background: 'none', border: 'none', color: '#94a3b8', padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '2px solid transparent' },
-  tabBtnActive: { color: '#f1f5f9', borderBottom: '2px solid #6366f1' },
+  page: { minHeight: '100vh', background: theme.colors.bg, padding: '20px 12px' },
+  shell: { maxWidth: 1000, margin: '0 auto' },
+  header: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    background: theme.colors.card, borderRadius: theme.radius.card, padding: '14px 20px',
+    marginBottom: 16, boxShadow: theme.shadow.card, flexWrap: 'wrap', gap: 12,
+  },
+  brand: { display: 'flex', alignItems: 'center', gap: 8 },
+  brandMark: { color: theme.colors.lavender, fontSize: 20 },
+  brandName: { fontSize: 18, fontWeight: 700, color: theme.colors.text },
+  nav: { display: 'flex', gap: 4, background: theme.colors.bg, borderRadius: theme.radius.pill, padding: 4, flexWrap: 'wrap' },
+  navBtn: { border: 'none', background: 'none', padding: '8px 16px', borderRadius: theme.radius.pill, fontSize: 13, fontWeight: 600, color: theme.colors.textMuted, cursor: 'pointer' },
+  navBtnActive: { background: theme.colors.lavender, color: '#fff' },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
+  avatar: { width: 34, height: 34, borderRadius: '50%', background: theme.colors.lavenderLight, color: theme.colors.lavender, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 },
+  logoutBtn: { border: 'none', background: 'none', color: theme.colors.textMuted, fontSize: 12, cursor: 'pointer' },
+  dayBar: { background: theme.colors.card, borderRadius: theme.radius.card, padding: '16px 20px', marginBottom: 16, boxShadow: theme.shadow.card },
+  dayBarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
+  dayBarLabel: { fontSize: 16, fontWeight: 700, color: theme.colors.text, margin: 0 },
+  weekLabel: { fontSize: 12, color: theme.colors.lavender, margin: '2px 0 0' },
+  dateLabel: { fontSize: 11, color: theme.colors.textMuted, display: 'flex', flexDirection: 'column', gap: 4 },
+  dateInput: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.input, padding: '4px 10px', fontSize: 12, color: theme.colors.text, background: theme.colors.bg },
+  dayPills: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  dayPill: { width: 30, height: 30, borderRadius: '50%', border: 'none', background: theme.colors.bg, color: theme.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
+  dayPillActive: { background: theme.colors.lavender, color: '#fff' },
+  dayPillToday: { boxShadow: `0 0 0 2px ${theme.colors.olive}` },
+  main: {},
 };
