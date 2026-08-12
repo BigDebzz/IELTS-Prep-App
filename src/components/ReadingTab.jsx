@@ -22,6 +22,8 @@ export default function ReadingTab({ user, selectedDay }) {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [savedWord, setSavedWord] = useState('');
   const [audioError, setAudioError] = useState('');
+  const [bookmark, setBookmark] = useState(null);
+  const [bookmarkSaving, setBookmarkSaving] = useState(false);
 
   function playAudio(url) {
     setAudioError('');
@@ -53,6 +55,33 @@ export default function ReadingTab({ user, selectedDay }) {
       setIsOfficial(false);
     }
   }, [selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    async function loadBookmark() {
+      const { data } = await supabase
+        .from('reading_bookmarks')
+        .select('paragraph_index')
+        .eq('user_id', user.id)
+        .eq('day_number', selectedDay)
+        .maybeSingle();
+      setBookmark(data ? data.paragraph_index : null);
+    }
+    loadBookmark();
+  }, [selectedDay, user.id]);
+
+  async function handleSetBookmark(paragraphIndex) {
+    setBookmarkSaving(true);
+    await supabase
+      .from('reading_bookmarks')
+      .upsert({ user_id: user.id, day_number: selectedDay, paragraph_index: paragraphIndex }, { onConflict: 'user_id,day_number' });
+    setBookmark(paragraphIndex);
+    setBookmarkSaving(false);
+  }
+
+  function scrollToBookmark() {
+    const el = document.getElementById(`para-${bookmark}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 
   async function handleGenerateAI() {
     setLoading(true); setError(''); setShowResults(false); setAnswers({}); setLookup(null);
@@ -100,15 +129,24 @@ export default function ReadingTab({ user, selectedDay }) {
   function renderClickablePassage(text) {
     const paragraphs = text.split(/\n\n+/);
     return paragraphs.map((para, pi) => (
-      <p key={pi} style={s.paragraph}>
-        {para.split(/(\s+)/).map((token, ti) =>
-          /\s+/.test(token) ? token : (
-            <span key={ti} style={s.clickableWord} onClick={() => handleWordClick(token)}>
-              {token}
-            </span>
-          )
-        )}
-      </p>
+      <div key={pi} id={`para-${pi}`} style={{ ...s.paragraphWrap, ...(bookmark === pi ? s.paragraphBookmarked : {}) }}>
+        <p style={s.paragraph}>
+          {para.split(/(\s+)/).map((token, ti) =>
+            /\s+/.test(token) ? token : (
+              <span key={ti} style={s.clickableWord} onClick={() => handleWordClick(token)}>
+                {token}
+              </span>
+            )
+          )}
+        </p>
+        <button
+          style={bookmark === pi ? s.bookmarkBtnActive : s.bookmarkBtn}
+          onClick={() => handleSetBookmark(pi)}
+          disabled={bookmarkSaving}
+        >
+          {bookmark === pi ? '📍 Stopped here' : '📍 Mark as stopped here'}
+        </button>
+      </div>
     ));
   }
 
@@ -147,6 +185,9 @@ export default function ReadingTab({ user, selectedDay }) {
               <span style={isOfficial ? s.officialTag : s.aiTag}>{isOfficial ? 'Official' : 'AI-generated'}</span>
             </div>
             <p style={s.questionTypeLabel}>{practice.questionType}</p>
+            {bookmark !== null && (
+              <button style={s.resumeBtn} onClick={scrollToBookmark}>↓ Resume where I left off (paragraph {bookmark + 1})</button>
+            )}
 
             {renderClickablePassage(practice.passage)}
 
@@ -213,7 +254,12 @@ const s = {
   officialTag: { fontSize: 10, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
   aiTag: { fontSize: 10, fontWeight: 700, color: theme.colors.coral, background: theme.colors.coral + '22', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
   questionTypeLabel: { fontSize: 12, color: theme.colors.lavender, marginBottom: 12 },
-  paragraph: { fontSize: 14, lineHeight: 1.8, marginBottom: 14 },
+  paragraph: { fontSize: 14, lineHeight: 1.8, marginBottom: 6 },
+  paragraphWrap: { marginBottom: 14, padding: 8, borderRadius: 8, transition: 'background 0.2s' },
+  paragraphBookmarked: { background: theme.colors.lavender + '15', boxShadow: `0 0 0 1px ${theme.colors.lavender}55` },
+  bookmarkBtn: { fontSize: 11, background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, borderRadius: 20, padding: '4px 10px', cursor: 'pointer' },
+  bookmarkBtnActive: { fontSize: 11, background: theme.colors.lavender, border: 'none', color: 'white', borderRadius: 20, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 },
+  resumeBtn: { fontSize: 12, background: theme.colors.lavender + '22', border: `1px solid ${theme.colors.lavender}`, color: theme.colors.lavender, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', marginBottom: 14, display: 'block' },
   clickableWord: { cursor: 'pointer', borderBottom: `1px dotted ${theme.colors.textMuted}`, transition: 'color 0.15s' },
   instructions: { fontSize: 13, color: '#a5b4fc', marginBottom: 12, fontWeight: 600, whiteSpace: 'pre-wrap' },
   qRow: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 },
