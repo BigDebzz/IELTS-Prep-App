@@ -23,7 +23,6 @@ export default function ReadingTab({ user, selectedDay }) {
   const [savedWord, setSavedWord] = useState('');
   const [audioError, setAudioError] = useState('');
   const [bookmark, setBookmark] = useState(null);
-  const [bookmarkSaving, setBookmarkSaving] = useState(false);
   const [menu, setMenu] = useState(null); // { word, paragraphIndex, x, y }
   const [copiedFlash, setCopiedFlash] = useState(false);
   const longPressTimer = useState({ current: null })[0];
@@ -73,12 +72,10 @@ export default function ReadingTab({ user, selectedDay }) {
   }, [selectedDay, user.id]);
 
   async function handleSetBookmark(paragraphIndex) {
-    setBookmarkSaving(true);
     await supabase
       .from('reading_bookmarks')
       .upsert({ user_id: user.id, day_number: selectedDay, paragraph_index: paragraphIndex }, { onConflict: 'user_id,day_number' });
     setBookmark(paragraphIndex);
-    setBookmarkSaving(false);
     setMenu(null);
   }
 
