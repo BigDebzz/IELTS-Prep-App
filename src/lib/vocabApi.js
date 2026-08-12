@@ -22,7 +22,10 @@ export async function lookupWord(word) {
   if (dictRes && Array.isArray(dictRes) && dictRes[0]) {
     const entry = dictRes[0];
     phonetic = entry.phonetic || entry.phonetics?.find(p => p.text)?.text || '';
-    audioUrl = entry.phonetics?.find(p => p.audio)?.audio || '';
+    const rawAudio = entry.phonetics?.find(p => p.audio)?.audio || '';
+    // dictionaryapi.dev sometimes returns protocol-relative URLs ("//ssl.gstatic.com/...")
+    // which some browsers refuse to play silently. Force https:// so playback works.
+    audioUrl = rawAudio && rawAudio.startsWith('//') ? `https:${rawAudio}` : rawAudio;
     const firstMeaning = entry.meanings?.[0];
     partOfSpeech = firstMeaning?.partOfSpeech || '';
     const firstDef = firstMeaning?.definitions?.[0];
