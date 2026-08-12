@@ -21,7 +21,17 @@ export default function ReadingTab({ user, selectedDay }) {
   const [lookup, setLookup] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [savedWord, setSavedWord] = useState('');
+  const [audioError, setAudioError] = useState('');
 
+  function playAudio(url) {
+    setAudioError('');
+    if (!url) { setAudioError('No pronunciation audio available for this word.'); return; }
+    const audio = new Audio(url);
+    audio.play().catch(() => setAudioError('Audio failed to play — this word\'s pronunciation file may be unavailable right now.'));
+  }
+
+  // Days 1 through however many official passages exist get real material, in order.
+  // Beyond that, AI generates new passages styled after a real one.
   const officialForDay = selectedDay <= OFFICIAL_PASSAGES.length ? OFFICIAL_PASSAGES[selectedDay - 1] : null;
   const dayTopic = topicForDay(selectedDay);
 
@@ -64,6 +74,7 @@ export default function ReadingTab({ user, selectedDay }) {
     setLookupLoading(true);
     setLookup({ word });
     setSavedWord('');
+    setAudioError('');
     try {
       const data = await lookupWord(word);
       setLookup(data);
@@ -171,6 +182,8 @@ export default function ReadingTab({ user, selectedDay }) {
               <div>
                 <p style={s.lookupWord}>{lookup.word}</p>
                 {lookup.phonetic && <p style={s.lookupPhonetic}>{lookup.phonetic}</p>}
+                <button style={s.saveBtn} onClick={() => playAudio(lookup.audioUrl)}>🔊 Pronounce</button>
+                {audioError && <p style={{ color: '#f87171', fontSize: 12, marginTop: 6 }}>{audioError}</p>}
                 <p style={s.lookupMeaning}>{lookup.meaning}</p>
                 {lookup.synonyms?.length > 0 && <p style={s.lookupTag}><strong>Synonyms:</strong> {lookup.synonyms.join(', ')}</p>}
                 {lookup.antonyms?.length > 0 && <p style={s.lookupTag}><strong>Antonyms:</strong> {lookup.antonyms.join(', ')}</p>}
