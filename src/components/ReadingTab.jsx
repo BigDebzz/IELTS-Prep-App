@@ -24,6 +24,9 @@ export default function ReadingTab({ user, selectedDay }) {
   const [audioError, setAudioError] = useState('');
   const [bookmark, setBookmark] = useState(null);
   const [bookmarkSaving, setBookmarkSaving] = useState(false);
+  const [menu, setMenu] = useState(null); // { word, paragraphIndex, x, y }
+  const [copiedFlash, setCopiedFlash] = useState(false);
+  const longPressTimer = useState({ current: null })[0];
 
   function playAudio(url) {
     setAudioError('');
@@ -76,11 +79,41 @@ export default function ReadingTab({ user, selectedDay }) {
       .upsert({ user_id: user.id, day_number: selectedDay, paragraph_index: paragraphIndex }, { onConflict: 'user_id,day_number' });
     setBookmark(paragraphIndex);
     setBookmarkSaving(false);
+    setMenu(null);
   }
 
   function scrollToBookmark() {
     const el = document.getElementById(`para-${bookmark}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function handlePressStart(e, word, paragraphIndex) {
+    const point = e.touches ? e.touches[0] : e;
+    const x = point.clientX;
+    const y = point.clientY;
+    longPressTimer.fired = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.fired = true;
+      setMenu({ word, paragraphIndex, x, y });
+    }, 450);
+  }
+
+  function handlePressEnd(e, word) {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      // Only treat this as a normal lookup tap if the long-press menu never fired.
+      if (!longPressTimer.fired) handleWordClick(word);
+      longPressTimer.current = null;
+    }
+  }
+
+  function handleCopy(word) {
+    const clean = cleanWord(word);
+    navigator.clipboard?.writeText(clean).then(() => {
+      setCopiedFlash(true);
+      setTimeout(() => setCopiedFlash(false), 1200);
+    });
+    setMenu(null);
   }
 
   async function handleGenerateAI() {
@@ -133,19 +166,19 @@ export default function ReadingTab({ user, selectedDay }) {
         <p style={s.paragraph}>
           {para.split(/(\s+)/).map((token, ti) =>
             /\s+/.test(token) ? token : (
-              <span key={ti} style={s.clickableWord} onClick={() => handleWordClick(token)}>
+              <span
+                key={ti}
+                style={s.clickableWord}
+                onTouchStart={(e) => handlePressStart(e, token, pi)}
+                onTouchEnd={(e) => handlePressEnd(e, token)}
+                onMouseDown={(e) => handlePressStart(e, token, pi)}
+                onMouseUp={(e) => handlePressEnd(e, token)}
+              >
                 {token}
               </span>
             )
           )}
         </p>
-        <button
-          style={bookmark === pi ? s.bookmarkBtnActive : s.bookmarkBtn}
-          onClick={() => handleSetBookmark(pi)}
-          disabled={bookmarkSaving}
-        >
-          {bookmark === pi ? '📍 Stopped here' : '📍 Mark as stopped here'}
-        </button>
       </div>
     ));
   }
@@ -190,6 +223,17 @@ export default function ReadingTab({ user, selectedDay }) {
             )}
 
             {renderClickablePassage(practice.passage)}
+
+            {menu && (
+              <>
+                <div style={s.menuBackdrop} onClick={() => setMenu(null)} />
+                <div style={{ ...s.menu, left: Math.max(10, menu.x - 60), top: Math.max(10, menu.y - 60) }}>
+                  <button style={s.menuItem} onClick={() => handleCopy(menu.word)}>📋 Copy</button>
+                  <button style={s.menuItem} onClick={() => handleSetBookmark(menu.paragraphIndex)}>📍 Mark position</button>
+                </div>
+              </>
+            )}
+            {copiedFlash && <div style={s.toast}>Copied</div>}
 
             <p style={s.instructions}>{practice.instructions}</p>
             {practice.questions.map(q => (
@@ -260,6 +304,10 @@ const s = {
   bookmarkBtn: { fontSize: 11, background: 'none', border: `1px solid ${theme.colors.border}`, color: theme.colors.textMuted, borderRadius: 20, padding: '4px 10px', cursor: 'pointer' },
   bookmarkBtnActive: { fontSize: 11, background: theme.colors.lavender, border: 'none', color: 'white', borderRadius: 20, padding: '4px 10px', cursor: 'pointer', fontWeight: 600 },
   resumeBtn: { fontSize: 12, background: theme.colors.lavender + '22', border: `1px solid ${theme.colors.lavender}`, color: theme.colors.lavender, borderRadius: 8, padding: '8px 12px', cursor: 'pointer', marginBottom: 14, display: 'block' },
+  menuBackdrop: { position: 'fixed', inset: 0, zIndex: 40 },
+  menu: { position: 'fixed', zIndex: 41, background: theme.colors.card, border: `1px solid ${theme.colors.border}`, borderRadius: 10, boxShadow: theme.shadow.pop, display: 'flex', overflow: 'hidden' },
+  menuItem: { padding: '10px 14px', background: 'none', border: 'none', color: theme.colors.text, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap', borderRight: `1px solid ${theme.colors.border}` },
+  toast: { position: 'fixed', bottom: 30, left: '50%', transform: 'translateX(-50%)', background: theme.colors.text, color: theme.colors.bg, padding: '8px 16px', borderRadius: 20, fontSize: 13, zIndex: 42 },
   clickableWord: { cursor: 'pointer', borderBottom: `1px dotted ${theme.colors.textMuted}`, transition: 'color 0.15s' },
   instructions: { fontSize: 13, color: '#a5b4fc', marginBottom: 12, fontWeight: 600, whiteSpace: 'pre-wrap' },
   qRow: { display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 },
