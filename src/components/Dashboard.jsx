@@ -16,6 +16,16 @@ function dayFromStart(startDate) {
   return Math.min(30, Math.max(1, diff + 1));
 }
 
+// Unclamped version — used only to detect and explain when you're past Day 30,
+// since the clamp above used to silently keep showing Day 30's content forever
+// with no indication that the 30-day plan had actually ended.
+function rawDayFromStart(startDate) {
+  const start = new Date(startDate);
+  const now = new Date();
+  const diff = Math.floor((now.setHours(0,0,0,0) - start.setHours(0,0,0,0)) / 86400000);
+  return diff + 1;
+}
+
 export default function Dashboard({ user }) {
   const [startDate, setStartDate] = useState(() => localStorage.getItem('ielts_start_date') || new Date().toISOString().slice(0, 10));
   const [selectedDay, setSelectedDay] = useState(1);
@@ -38,6 +48,8 @@ export default function Dashboard({ user }) {
   const initials = (user.email || '?').slice(0, 2).toUpperCase();
   const week = weekForDay(selectedDay);
   const today = dayFromStart(startDate);
+  const rawToday = rawDayFromStart(startDate);
+  const planEnded = rawToday > 30;
 
   return (
     <div style={s.page}>
@@ -62,6 +74,14 @@ export default function Dashboard({ user }) {
         </header>
 
         {/* Day calendar strip — borrowed from reference's month calendar concept */}
+        {planEnded && (
+          <div style={s.planEndedBanner}>
+            Your 30-day plan finished {rawToday - 30} day{rawToday - 30 === 1 ? '' : 's'} ago (based on your start date).
+            You're currently viewing Day 30's content, which repeats — Vocabulary's daily word batch and the plan
+            checklist stay fixed at Day 30 rather than continuing to rotate. Reset your start date below to begin a
+            new 30-day cycle for fresh content, or manually click through different day numbers to review past days.
+          </div>
+        )}
         <div style={s.dayBar}>
           <div style={s.dayBarTop}>
             <div>
@@ -92,7 +112,7 @@ export default function Dashboard({ user }) {
 
         <main style={s.main}>
           {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
-          {tab === 'vocabulary' && <VocabularyTab user={user} />}
+          {tab === 'vocabulary' && <VocabularyTab user={user} selectedDay={selectedDay} />}
           {tab === 'reading' && <ReadingTab user={user} selectedDay={selectedDay} />}
           {tab === 'listening' && <ListeningTab user={user} selectedDay={selectedDay} />}
           {tab === 'writing' && <WritingTab user={user} selectedDay={selectedDay} />}
@@ -120,6 +140,7 @@ const s = {
   headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
   avatar: { width: 34, height: 34, borderRadius: '50%', background: theme.colors.lavenderLight, color: theme.colors.lavender, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 },
   logoutBtn: { border: 'none', background: 'none', color: theme.colors.textMuted, fontSize: 12, cursor: 'pointer' },
+  planEndedBanner: { background: theme.colors.coral + '15', border: `1px solid ${theme.colors.coral}`, borderRadius: theme.radius.card, padding: '12px 16px', marginBottom: 16, fontSize: 12, color: theme.colors.coral, lineHeight: 1.5 },
   dayBar: { background: theme.colors.card, borderRadius: theme.radius.card, padding: '16px 20px', marginBottom: 16, boxShadow: theme.shadow.card },
   dayBarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
   dayBarLabel: { fontSize: 16, fontWeight: 700, color: theme.colors.text, margin: 0 },
