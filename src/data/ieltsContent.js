@@ -132,3 +132,21 @@ export const DAILY_READING_TOPICS = [
 export function topicForDay(day) {
   return DAILY_READING_TOPICS[(day - 1) % DAILY_READING_TOPICS.length];
 }
+
+// Real, IELTS-authentic Task 2 prompt templates, one per essay type, so Writing
+// has an actual daily prompt instead of an empty text box. The day's topic
+// (from topicForDay) is substituted in — these are genuine IELTS-style question
+// stems, not AI-invented prompts.
+export function writingPromptForDay(day) {
+  const topic = topicForDay(day);
+  const typeIndex = (day - 1) % WRITING_TASK2_TYPES.length;
+  const type = WRITING_TASK2_TYPES[typeIndex];
+  const templates = {
+    'Opinion (Agree/Disagree)': `Some people believe that progress in ${topic.toLowerCase()} does more harm than good, while others believe it is essential for society. To what extent do you agree or disagree?`,
+    'Discussion (Both Views)': `Some people think governments should invest heavily in ${topic.toLowerCase()}, while others believe this money would be better spent elsewhere. Discuss both views and give your own opinion.`,
+    'Advantages/Disadvantages': `Discuss the advantages and disadvantages of recent developments in ${topic.toLowerCase()}.`,
+    'Problem/Solution': `Developments in ${topic.toLowerCase()} have created new problems for society. What are the causes of these problems, and what solutions can you suggest?`,
+    'Two-Part Question': `Why has ${topic.toLowerCase()} become an important issue in many countries? What can individuals do to respond to this?`,
+  };
+  return { type: type.type, prompt: templates[type.type], topic };
+}
