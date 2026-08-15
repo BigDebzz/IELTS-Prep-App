@@ -1,30 +1,71 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { scoreWriting } from '../lib/gemini';
-import { WRITING_TASK2_TYPES, WRITING_BAND_DESCRIPTORS } from '../data/ieltsContent';
+import { WRITING_BAND_DESCRIPTORS, writingPromptForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 
 export default function WritingTab({ user, selectedDay }) {
-  const [taskType, setTaskType] = useState('Task 2 - ' + WRITING_TASK2_TYPES[0].type);
-  const [prompt, setPrompt] = useState('');
+  const daily = writingPromptForDay(selectedDay);
   const [essay, setEssay] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
-  const essayInfo = WRITING_TASK2_TYPES.find(t => taskType.includes(t.type));
+  // Load any saved draft/result for this day when the day changes.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoaded(false);
+      setEssay('');
+      setResult(null);
+      setError('');
+      const { data } = await supabase
+        .from('writing_sessions')
+        .select('essay, result')
+        .eq('user_id', user.id)
+        .eq('day_number', selectedDay)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setEssay(data.essay || '');
+        setResult(data.result || null);
+      }
+      if (!cancelled) setLoaded(true);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [selectedDay, user.id]);
+
+  // Autosave the draft as you type (debounced) so switching tabs never loses it.
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(async () => {
+      setSaving(true);
+      await supabase.from('writing_sessions').upsert(
+        { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result },
+        { onConflict: 'user_id,day_number' }
+      );
+      setSaving(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [essay, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleScore(e) {
     e.preventDefault();
-    if (!prompt.trim() || !essay.trim()) return;
+    if (!essay.trim()) return;
     setLoading(true); setError(''); setResult(null);
     try {
-      const data = await scoreWriting(taskType, prompt, essay);
+      const data = await scoreWriting(daily.type, daily.prompt, essay);
       setResult(data);
+      await supabase.from('writing_sessions').upsert(
+        { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result: data },
+        { onConflict: 'user_id,day_number' }
+      );
       await supabase.from('mock_scores').insert({
         user_id: user.id,
         day_number: selectedDay,
         writing: data.overall,
-        test_source: 'AI-scored: ' + taskType,
+        test_source: 'AI-scored: ' + daily.type,
       });
     } catch (err) {
       setError('Scoring failed: ' + err.message);
@@ -34,22 +75,29 @@ export default function WritingTab({ user, selectedDay }) {
 
   return (
     <section style={s.section}>
-      <h2 style={s.title}>Writing Practice</h2>
-      <p style={s.hint}>You write the essay. Feedback is scored strictly against the real official IELTS band descriptors baked into this app — the AI does not invent its own criteria.</p>
+      <h2 style={s.title}>Writing Practice — Day {selectedDay}</h2>
+      <p style={s.hint}>
+        Today's prompt is generated from a real IELTS Task 2 question template ({daily.type}) on today's topic.
+        Your draft autosaves as you type — switching tabs or days won't lose it.
+      </p>
 
-      <select style={s.input} value={taskType} onChange={e => setTaskType(e.target.value)}>
-        {WRITING_TASK2_TYPES.map(t => <option key={t.type} value={'Task 2 - ' + t.type}>{'Task 2 - ' + t.type}</option>)}
-        <option value="Task 1 - Report">Task 1 - Report (graph/chart/map/process)</option>
-      </select>
-
-      {essayInfo && (
-        <div style={s.ruleBox}><strong>Structure:</strong> {essayInfo.structure}</div>
-      )}
+      <div style={s.promptBox}>
+        <strong>{daily.type}</strong>
+        <p style={s.promptText}>{daily.prompt}</p>
+      </div>
 
       <form onSubmit={handleScore} style={s.form}>
-        <textarea style={s.textarea} rows={2} placeholder="Paste or write the essay prompt/question here" value={prompt} onChange={e => setPrompt(e.target.value)} />
-        <textarea style={s.textareaBig} rows={12} placeholder="Write your essay here (aim for 250+ words for Task 2, 150+ for Task 1)" value={essay} onChange={e => setEssay(e.target.value)} />
-        <p style={s.wordCount}>{essay.trim().split(/\s+/).filter(Boolean).length} words</p>
+        <textarea
+          style={s.textareaBig}
+          rows={12}
+          placeholder="Write your essay here (aim for 250+ words)"
+          value={essay}
+          onChange={e => setEssay(e.target.value)}
+        />
+        <div style={s.metaRow}>
+          <p style={s.wordCount}>{essay.trim().split(/\s+/).filter(Boolean).length} words</p>
+          <p style={s.saveStatus}>{saving ? 'Saving…' : loaded ? 'Saved' : ''}</p>
+        </div>
         <button style={s.button} type="submit" disabled={loading}>{loading ? 'Scoring…' : 'Get AI band feedback'}</button>
       </form>
 
@@ -85,24 +133,25 @@ export default function WritingTab({ user, selectedDay }) {
 }
 
 const s = {
-  section: { background: '#1e293b', borderRadius: 12, padding: 20 },
+  section: { background: '#121212', borderRadius: 12, padding: 20 },
   title: { fontSize: 18, margin: '0 0 8px' },
-  hint: { color: '#94a3b8', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
-  input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 14, marginBottom: 10 },
-  ruleBox: { background: '#0f172a', borderRadius: 8, padding: 12, fontSize: 13, color: '#cbd5e1', marginBottom: 16 },
+  hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
+  promptBox: { background: '#000000', borderRadius: 8, padding: 14, marginBottom: 16, fontSize: 13, color: '#a5b4fc' },
+  promptText: { color: '#f5f5f5', fontSize: 15, marginTop: 8, lineHeight: 1.5 },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
-  textarea: { padding: 10, borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 14, resize: 'vertical' },
-  textareaBig: { padding: 12, borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 14, resize: 'vertical', lineHeight: 1.5 },
+  textareaBig: { padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', lineHeight: 1.5 },
+  metaRow: { display: 'flex', justifyContent: 'space-between' },
   wordCount: { fontSize: 12, color: '#64748b', margin: 0 },
+  saveStatus: { fontSize: 12, color: '#4ade80', margin: 0 },
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
   error: { color: '#f87171', fontSize: 13 },
-  card: { background: '#0f172a', borderRadius: 10, padding: 16, marginTop: 16 },
+  card: { background: '#000000', borderRadius: 10, padding: 16, marginTop: 16 },
   overallScore: { fontSize: 20, color: '#4ade80', margin: '0 0 12px' },
   criteriaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
-  criterion: { fontSize: 12, background: '#1e293b', padding: 10, borderRadius: 8, lineHeight: 1.4 },
+  criterion: { fontSize: 12, background: '#121212', padding: 10, borderRadius: 8, lineHeight: 1.4 },
   feedback: { fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' },
-  descriptorBox: { marginTop: 20, fontSize: 13, color: '#94a3b8' },
+  descriptorBox: { marginTop: 20, fontSize: 13, color: '#a3a3a3' },
   descriptorSummary: { cursor: 'pointer', color: '#a5b4fc', marginBottom: 8 },
-  bandBlock: { background: '#0f172a', borderRadius: 8, padding: 12, marginTop: 8 },
+  bandBlock: { background: '#000000', borderRadius: 8, padding: 12, marginTop: 8 },
   descLine: { fontSize: 12, margin: '4px 0', color: '#cbd5e1' },
 };
