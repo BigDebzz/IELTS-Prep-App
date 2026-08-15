@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { scoreSpeaking } from '../lib/gemini';
 import { SPEAKING_STRUCTURE, SPEAKING_TOPICS, SPEAKING_BAND_DESCRIPTORS } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
@@ -8,10 +8,13 @@ export default function SpeakingTab({ user, selectedDay }) {
   const [topic, setTopic] = useState(SPEAKING_TOPICS[0]);
   const [question, setQuestion] = useState('');
   const [transcript, setTranscript] = useState('');
+  const [interim, setInterim] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [recording, setRecording] = useState(false);
+  const recognitionRef = useRef(null);
+  const manualStopRef = useRef(false);
 
   const info = SPEAKING_STRUCTURE[part];
 
@@ -21,18 +24,52 @@ export default function SpeakingTab({ user, selectedDay }) {
       setError('Voice input is not supported in this browser — type your answer instead.');
       return;
     }
+    setError('');
+    manualStopRef.current = false;
+
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;
+    // interim results let you SEE live what it's hearing, so a mishear (e.g. "dongle" for
+    // "dung") is visible immediately instead of discovered after you submit.
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
+
     recognition.onresult = (event) => {
-      let text = '';
-      for (let i = 0; i < event.results.length; i++) text += event.results[i][0].transcript + ' ';
-      setTranscript(text.trim());
+      let finalChunk = '';
+      let interimChunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const text = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalChunk += text + ' ';
+        else interimChunk += text;
+      }
+      if (finalChunk) setTranscript(prev => (prev ? prev + ' ' : '') + finalChunk.trim());
+      setInterim(interimChunk);
     };
-    recognition.onend = () => setRecording(false);
+
+    // Most browsers auto-stop after a few seconds of silence (which is why pausing
+    // for a comma used to cut you off). Auto-restart unless YOU pressed stop.
+    recognition.onend = () => {
+      if (!manualStopRef.current) {
+        try { recognition.start(); } catch (e) { /* already running */ }
+      } else {
+        setRecording(false);
+        setInterim('');
+      }
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === 'no-speech' || event.error === 'aborted') return; // expected during pauses, ignore
+      setError('Voice input error: ' + event.error);
+    };
+
+    recognitionRef.current = recognition;
     recognition.start();
     setRecording(true);
+  }
+
+  function stopVoiceInput() {
+    manualStopRef.current = true;
+    recognitionRef.current?.stop();
   }
 
   async function handleScore(e) {
@@ -77,11 +114,20 @@ export default function SpeakingTab({ user, selectedDay }) {
       <input style={s.input} placeholder="Optional: paste the exact question/cue card text" value={question} onChange={e => setQuestion(e.target.value)} />
 
       <div style={s.recordRow}>
-        <button style={s.button} onClick={startVoiceInput} disabled={recording}>{recording ? '🎙 Listening…' : '🎙 Speak your answer'}</button>
+        <button style={s.button} onClick={recording ? stopVoiceInput : startVoiceInput}>
+          {recording ? '⏹ Stop recording' : '🎙 Speak your answer'}
+        </button>
         <span style={s.orText}>or type below</span>
       </div>
 
+      {recording && (
+        <p style={s.interimHint}>
+          Listening — pausing for commas is fine now, it won't cut off. Live: <em>{interim || '…'}</em>
+        </p>
+      )}
+
       <textarea style={s.textarea} rows={6} placeholder="Your answer (spoken or typed) appears here" value={transcript} onChange={e => setTranscript(e.target.value)} />
+      <p style={s.hint}>If you spot a mishear (e.g. it wrote "dongle" instead of "dung"), just edit the text box directly — the transcript is fully editable before you submit.</p>
 
       <button style={s.button} onClick={handleScore} disabled={loading || !transcript.trim()}>{loading ? 'Scoring…' : 'Get AI band feedback'}</button>
 
@@ -124,6 +170,7 @@ const s = {
   ruleBox: { background: '#000000', borderRadius: 8, padding: 12, fontSize: 13, color: '#cbd5e1', marginBottom: 12 },
   recordRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 },
   orText: { fontSize: 12, color: '#64748b' },
+  interimHint: { fontSize: 12, color: '#8b8cf8', marginBottom: 10, fontStyle: 'italic' },
   textarea: { width: '100%', padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', marginBottom: 10 },
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
   error: { color: '#f87171', fontSize: 13 },
