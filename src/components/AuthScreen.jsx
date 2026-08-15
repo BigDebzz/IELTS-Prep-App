@@ -40,14 +40,14 @@ export default function AuthScreen() {
 }
 
 const s = {
-  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0f172a', padding: 16 },
-  card: { background: '#1e293b', borderRadius: 16, padding: 32, width: '100%', maxWidth: 380 },
-  title: { color: '#f1f5f9', fontSize: 22, marginBottom: 4, textAlign: 'center' },
-  subtitle: { color: '#94a3b8', fontSize: 14, marginBottom: 24, textAlign: 'center' },
+  wrap: { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000000', padding: 16 },
+  card: { background: '#121212', borderRadius: 16, padding: 32, width: '100%', maxWidth: 380 },
+  title: { color: '#f5f5f5', fontSize: 22, marginBottom: 4, textAlign: 'center' },
+  subtitle: { color: '#a3a3a3', fontSize: 14, marginBottom: 24, textAlign: 'center' },
   form: { display: 'flex', flexDirection: 'column', gap: 12 },
-  input: { padding: '12px 14px', borderRadius: 8, border: '1px solid #334155', background: '#0f172a', color: '#f1f5f9', fontSize: 15 },
+  input: { padding: '12px 14px', borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 15 },
   button: { padding: '12px 14px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', marginTop: 8 },
-  switchBtn: { marginTop: 16, background: 'none', border: 'none', color: '#818cf8', cursor: 'pointer', fontSize: 13, width: '100%' },
+  switchBtn: { marginTop: 16, background: 'none', border: 'none', color: '#8b8cf8', cursor: 'pointer', fontSize: 13, width: '100%' },
   error: { color: '#f87171', fontSize: 13, margin: 0 },
   info: { color: '#4ade80', fontSize: 13, margin: 0 },
 };
