@@ -94,7 +94,7 @@ export default function Dashboard({ user }) {
           {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
           {tab === 'vocabulary' && <VocabularyTab user={user} />}
           {tab === 'reading' && <ReadingTab user={user} selectedDay={selectedDay} />}
-          {tab === 'listening' && <ListeningTab />}
+          {tab === 'listening' && <ListeningTab user={user} selectedDay={selectedDay} />}
           {tab === 'writing' && <WritingTab user={user} selectedDay={selectedDay} />}
           {tab === 'speaking' && <SpeakingTab user={user} selectedDay={selectedDay} />}
         </main>
