@@ -37,6 +37,7 @@ export default function TasksTab({ user, selectedDay }) {
 
   const dayTasks = useMemo(() => tasks.filter(t => t.day_number === selectedDay), [tasks, selectedDay]);
   const week = weekForDay(selectedDay);
+
   const doneCount = dayTasks.filter(t => t.done).length;
 
   if (loading) return <p style={s.hint}>Loading tasks…</p>;
@@ -74,13 +75,13 @@ export default function TasksTab({ user, selectedDay }) {
 }
 
 const s = {
-  section: { background: '#1e293b', borderRadius: 12, padding: 20 },
+  section: { background: '#121212', borderRadius: 12, padding: 20 },
   title: { fontSize: 20, margin: 0 },
-  hint: { color: '#94a3b8', fontSize: 13 },
+  hint: { color: '#a3a3a3', fontSize: 13 },
   dayHeader: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 4 },
-  weekBadge: { fontSize: 11, background: '#33415522', color: '#a5b4fc', padding: '4px 10px', borderRadius: 20 },
-  weekFocus: { color: '#94a3b8', fontSize: 13, marginBottom: 8 },
-  progressText: { color: '#818cf8', fontSize: 12, fontWeight: 600, marginBottom: 16 },
+  weekBadge: { fontSize: 11, background: '#2a2a2a22', color: '#a5b4fc', padding: '4px 10px', borderRadius: 20 },
+  weekFocus: { color: '#a3a3a3', fontSize: 13, marginBottom: 8 },
+  progressText: { color: '#8b8cf8', fontSize: 12, fontWeight: 600, marginBottom: 16 },
   list: { listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 },
   item: {},
   label: { display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' },
