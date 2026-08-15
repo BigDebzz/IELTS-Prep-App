@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react';
 import { lookupWord, getRelatedWords } from '../lib/vocabApi';
 import { checkVocabSentence } from '../lib/gemini';
 import { supabase } from '../lib/supabase';
+import { vocabBatchForDay } from '../data/vocabularyBank';
 
-export default function VocabularyTab({ user }) {
+export default function VocabularyTab({ user, selectedDay }) {
+  const todaysWords = vocabBatchForDay(selectedDay);
+
   const [word, setWord] = useState('');
   const [result, setResult] = useState(null);
   const [related, setRelated] = useState([]);
@@ -15,15 +18,16 @@ export default function VocabularyTab({ user }) {
   const [justSaved, setJustSaved] = useState(false);
   const [audioError, setAudioError] = useState('');
 
+  const [savedWords, setSavedWords] = useState([]);
+  const [savedLoading, setSavedLoading] = useState(true);
+  const [savedWordSet, setSavedWordSet] = useState(new Set());
+
   function playAudio(url) {
     setAudioError('');
     if (!url) { setAudioError('No pronunciation audio available for this word.'); return; }
     const audio = new Audio(url);
     audio.play().catch(() => setAudioError('Audio failed to play — this word\'s pronunciation file may be unavailable right now.'));
   }
-
-  const [savedWords, setSavedWords] = useState([]);
-  const [savedLoading, setSavedLoading] = useState(true);
 
   useEffect(() => {
     loadSavedWords();
@@ -36,22 +40,30 @@ export default function VocabularyTab({ user }) {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
-    if (!error) setSavedWords(data);
+    if (!error) {
+      setSavedWords(data);
+      setSavedWordSet(new Set(data.map(w => w.word.toLowerCase().split(' ')[0])));
+    }
     setSavedLoading(false);
   }
 
-  async function handleLookup(e) {
-    e.preventDefault();
-    if (!word.trim()) return;
-    setLoading(true); setError(''); setResult(null); setSentenceFeedback(null); setJustSaved(false);
+  async function lookupSpecificWord(w) {
+    setWord(w);
+    setLoading(true); setError(''); setResult(null); setSentenceFeedback(null); setJustSaved(false); setSentence('');
     try {
-      const [data, rel] = await Promise.all([lookupWord(word), getRelatedWords(word)]);
+      const [data, rel] = await Promise.all([lookupWord(w), getRelatedWords(w)]);
       setResult(data);
       setRelated(rel);
     } catch (err) {
       setError('Lookup failed — check your spelling or try again.');
     }
     setLoading(false);
+  }
+
+  async function handleLookup(e) {
+    e.preventDefault();
+    if (!word.trim()) return;
+    await lookupSpecificWord(word);
   }
 
   async function handleSaveWord() {
@@ -72,7 +84,7 @@ export default function VocabularyTab({ user }) {
 
   async function handleDelete(id) {
     const { error } = await supabase.from('vocab').delete().eq('id', id);
-    if (!error) setSavedWords(prev => prev.filter(w => w.id !== id));
+    if (!error) { setSavedWords(prev => prev.filter(w => w.id !== id)); loadSavedWords(); }
   }
 
   async function handleCheckSentence() {
@@ -90,10 +102,26 @@ export default function VocabularyTab({ user }) {
   return (
     <section style={s.section}>
       <h2 style={s.title}>Vocabulary Builder</h2>
-      <p style={s.hint}>Real dictionary + thesaurus data (dictionaryapi.dev + Datamuse) — no AI-generated definitions. AI is only used below to check your own example sentence. Words you save here (or from the Reading tab) show up permanently in "My Saved Words" below, on any device.</p>
+      <p style={s.hint}>Real dictionary + thesaurus data (dictionaryapi.dev + Datamuse) — no AI-generated definitions. AI is only used below to check your own example sentence.</p>
+
+      <div style={s.dailySection}>
+        <h3 style={s.dailyTitle}>Day {selectedDay}: Words to Learn</h3>
+        <p style={s.dailySub}>From the Academic Word List (Coxhead, 2000) — the real corpus IELTS reading and writing content draws its vocabulary from. Tap a word to look it up.</p>
+        <div style={s.wordChips}>
+          {todaysWords.map(w => (
+            <button
+              key={w}
+              onClick={() => lookupSpecificWord(w)}
+              style={{ ...s.chip, ...(savedWordSet.has(w) ? s.chipSaved : {}) }}
+            >
+              {w} {savedWordSet.has(w) && '✓'}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <form onSubmit={handleLookup} style={s.form}>
-        <input style={s.input} placeholder="Type a word (e.g. from your reading)" value={word} onChange={e => setWord(e.target.value)} />
+        <input style={s.input} placeholder="Or type any word (e.g. from your reading)" value={word} onChange={e => setWord(e.target.value)} />
         <button style={s.button} type="submit" disabled={loading}>{loading ? 'Looking up…' : 'Look up'}</button>
       </form>
 
@@ -144,7 +172,7 @@ export default function VocabularyTab({ user }) {
         <h3 style={s.savedTitle}>My Saved Words {savedWords.length > 0 && `(${savedWords.length})`}</h3>
         {savedLoading && <p style={s.hint}>Loading…</p>}
         {!savedLoading && savedWords.length === 0 && (
-          <p style={s.hint}>No words saved yet. Look one up above, or click a word while reading, then hit "Save word."</p>
+          <p style={s.hint}>No words saved yet. Tap one of today's words above, or look one up, then hit "Save word."</p>
         )}
         <div style={s.savedList}>
           {savedWords.map(w => (
@@ -169,6 +197,12 @@ const s = {
   section: { background: '#121212', borderRadius: 12, padding: 20 },
   title: { fontSize: 18, margin: '0 0 8px' },
   hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 16, lineHeight: 1.5 },
+  dailySection: { background: '#000000', borderRadius: 10, padding: 16, marginBottom: 16 },
+  dailyTitle: { fontSize: 15, margin: '0 0 4px', color: '#f5f5f5' },
+  dailySub: { fontSize: 12, color: '#a3a3a3', margin: '0 0 12px', lineHeight: 1.5 },
+  wordChips: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  chip: { padding: '6px 14px', borderRadius: 20, border: '1px solid #2a2a2a', background: '#121212', color: '#f5f5f5', fontSize: 13, cursor: 'pointer' },
+  chipSaved: { border: '1px solid #4ade80', color: '#4ade80' },
   form: { display: 'flex', gap: 8, marginBottom: 16 },
   input: { flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14 },
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
