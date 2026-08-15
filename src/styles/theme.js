@@ -1,22 +1,23 @@
 // src/styles/theme.js
-// Dark theme (matching the original deployed build), with layout patterns
-// borrowed from the LingoLab reference: progress graph, calendar day-picker,
-// "today's tasks" card, score/percentile framing — applied on the dark palette.
+// True black theme — pure black page background with slightly-raised near-black
+// cards, so content still has depth on OLED-style black rather than everything
+// flattening into one shade. Fonts kept as the system stack (fastest load, most
+// legible on every device) but sized/weighted for clarity on black specifically.
 
 export const theme = {
   colors: {
-    bg: '#0f172a',
-    card: '#1e293b',
-    cardAlt: '#0f172a',
-    text: '#f1f5f9',
-    textMuted: '#94a3b8',
+    bg: '#000000',
+    card: '#121212',
+    cardAlt: '#000000',
+    text: '#f5f5f5',
+    textMuted: '#a3a3a3',
     olive: '#a3e635',
     oliveDark: '#65a30d',
-    lavender: '#818cf8',
-    lavenderLight: '#312e81',
+    lavender: '#8b8cf8',
+    lavenderLight: '#2a2a5c',
     coral: '#fb923c',
-    coralLight: '#7c2d12',
-    border: '#334155',
+    coralLight: '#3d2412',
+    border: '#2a2a2a',
     danger: '#f87171',
     success: '#4ade80',
   },
@@ -27,10 +28,10 @@ export const theme = {
     input: '8px',
   },
   shadow: {
-    card: '0 10px 30px rgba(0,0,0,0.25)',
-    pop: '0 12px 40px rgba(0,0,0,0.4)',
+    card: '0 10px 30px rgba(0,0,0,0.6)',
+    pop: '0 12px 40px rgba(0,0,0,0.8)',
   },
   font: {
-    family: `-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif`,
+    family: `-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Roboto, Inter, sans-serif`,
   },
 };
