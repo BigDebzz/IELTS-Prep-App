@@ -62,19 +62,93 @@ export const READING_QUESTION_TYPES = [
 ];
 
 // Writing Task 2 essay types
+// Writing Task 2 essay types — expanded into a real paragraph-by-paragraph
+// teaching guide (not just a one-line summary), so a first-time IELTS
+// candidate can see exactly what belongs in each paragraph before writing,
+// not just be scored on the result afterward.
 export const WRITING_TASK2_TYPES = [
-  { type: 'Opinion (Agree/Disagree)', structure: 'Intro with clear thesis → 2 body paragraphs supporting your position → conclusion restating position.' },
-  { type: 'Discussion (Both Views)', structure: 'Intro → paragraph on view 1 → paragraph on view 2 → your opinion stated clearly → conclusion.' },
-  { type: 'Advantages/Disadvantages', structure: 'Intro → advantages paragraph → disadvantages paragraph → conclusion (with opinion if asked).' },
-  { type: 'Problem/Solution', structure: 'Intro → problems paragraph → solutions paragraph (linked to the problems) → conclusion.' },
-  { type: 'Two-Part Question', structure: 'Intro → paragraph fully answering Q1 → paragraph fully answering Q2 → conclusion.' },
+  {
+    type: 'Opinion (Agree/Disagree)',
+    structure: 'Intro with clear thesis → 2 body paragraphs supporting your position → conclusion restating position.',
+    howTo: [
+      { part: 'Introduction (2-3 sentences)', guidance: 'Paraphrase the question in your own words, then clearly state your opinion. Do not repeat the question word-for-word.' },
+      { part: 'Body Paragraph 1', guidance: 'Give your strongest reason for your opinion. State the reason in one sentence, then explain it, then give a specific example (a real or realistic scenario) to support it.' },
+      { part: 'Body Paragraph 2', guidance: 'Give a second, different reason. Same pattern: state it, explain it, example it. Do not just repeat paragraph 1 in different words.' },
+      { part: 'Conclusion (1-2 sentences)', guidance: 'Restate your opinion in different words from the introduction. Briefly summarize your two reasons. No new ideas here.' },
+    ],
+    example: 'Example opening: "While some argue that [opposing view], I believe that [your position], primarily because of [reason 1] and [reason 2]."',
+  },
+  {
+    type: 'Discussion (Both Views)',
+    structure: 'Intro → paragraph on view 1 → paragraph on view 2 → your opinion stated clearly → conclusion.',
+    howTo: [
+      { part: 'Introduction', guidance: 'Paraphrase the question, mention that there are two views, without yet giving your own opinion.' },
+      { part: 'Body Paragraph 1', guidance: 'Explain the FIRST view fairly and fully, as if you believed it — reason plus example. Do not criticize it yet.' },
+      { part: 'Body Paragraph 2', guidance: 'Explain the SECOND view the same way — reason plus example.' },
+      { part: 'Your opinion', guidance: 'Many band 7+ essays fold this into the conclusion or add a short paragraph: state clearly which view you find more convincing and why.' },
+      { part: 'Conclusion', guidance: 'Summarize both views were considered, restate your opinion clearly.' },
+    ],
+    example: 'Example structure phrase: "On one hand, ... On the other hand, ... In my view, the former/latter argument is more convincing because..."',
+  },
+  {
+    type: 'Advantages/Disadvantages',
+    structure: 'Intro → advantages paragraph → disadvantages paragraph → conclusion (with opinion if asked).',
+    howTo: [
+      { part: 'Introduction', guidance: 'Paraphrase the topic, state that it has both advantages and disadvantages (don\'t list them yet).' },
+      { part: 'Body Paragraph 1 — Advantages', guidance: 'Pick 1-2 real advantages. State each, explain why it matters, give an example.' },
+      { part: 'Body Paragraph 2 — Disadvantages', guidance: 'Same pattern for 1-2 disadvantages.' },
+      { part: 'Conclusion', guidance: 'If the question asks for your opinion ("do advantages outweigh disadvantages?"), answer that directly here. If not, just summarize both sides briefly.' },
+    ],
+    example: 'Example linking phrase: "Despite these benefits, however, there are notable drawbacks to consider."',
+  },
+  {
+    type: 'Problem/Solution',
+    structure: 'Intro → problems paragraph → solutions paragraph (linked to the problems) → conclusion.',
+    howTo: [
+      { part: 'Introduction', guidance: 'Paraphrase the topic and state that it presents both problems and possible solutions.' },
+      { part: 'Body Paragraph 1 — Problems', guidance: 'Describe 1-2 specific, real problems with cause-and-effect explanation (this causes that, which leads to...).' },
+      { part: 'Body Paragraph 2 — Solutions', guidance: 'Give solutions that directly address the SAME problems you named in paragraph 1 — don\'t introduce new unrelated problems here.' },
+      { part: 'Conclusion', guidance: 'Briefly restate the main problem and your recommended solution.' },
+    ],
+    example: 'Example linking phrase: "One effective way to address this issue would be to..."',
+  },
+  {
+    type: 'Two-Part Question',
+    structure: 'Intro → paragraph fully answering Q1 → paragraph fully answering Q2 → conclusion.',
+    howTo: [
+      { part: 'Introduction', guidance: 'Paraphrase the topic. You can briefly signal both questions you\'ll answer.' },
+      { part: 'Body Paragraph 1', guidance: 'Answer the FIRST question completely — reason plus example. This is a very common mistake area: make sure you actually answer the specific question asked, not a related but different one.' },
+      { part: 'Body Paragraph 2', guidance: 'Answer the SECOND question completely, same pattern.' },
+      { part: 'Conclusion', guidance: 'Briefly summarize your answer to both questions.' },
+    ],
+    example: 'Both questions must be answered fully — a common Band 5-6 mistake is answering only one question well and rushing the other.',
+  },
 ];
 
-// Speaking Part 1/2/3 structure and real recurring topics
+// Speaking Part 1/2/3 structure and real recurring topics — expanded with
+// concrete "what a good answer looks like" guidance, not just timing/format.
 export const SPEAKING_STRUCTURE = {
-  part1: { duration: '4-5 min', style: 'Short personal questions', tip: 'Give 3-4 sentence answers with a reason or example, not one-word answers.' },
-  part2: { duration: '1 min prep + up to 2 min speaking', style: 'Cue card topic', tip: 'Use the full 2 minutes; jot 3-4 bullet points during prep.' },
-  part3: { duration: '4-5 min', style: 'Abstract discussion linked to Part 2 topic', tip: 'Use conditionals, hypotheticals, and speculation language; give developed answers (20-40 sec each).' },
+  part1: {
+    duration: '4-5 min',
+    style: 'Short personal questions',
+    tip: 'Give 3-4 sentence answers with a reason or example, not one-word answers.',
+    howTo: 'A weak answer is one sentence ("I live in Lagos"). A good answer adds WHY or a detail: "I live in Lagos, which is Nigeria\'s largest city — I\'ve been there for about five years and I really like how busy and energetic it feels." Structure: direct answer → one reason or detail → optionally a small extra comment.',
+    example: 'Q: "Do you like your job?" — Weak: "Yes, I like it." Better: "Yes, I do, mainly because it involves a lot of variety — no two days look the same, which keeps things interesting for me."',
+  },
+  part2: {
+    duration: '1 min prep + up to 2 min speaking',
+    style: 'Cue card topic',
+    tip: 'Use the full 2 minutes; jot 3-4 bullet points during prep.',
+    howTo: 'The cue card gives you a topic plus 3-4 sub-points to cover (e.g. "what it is, when it happened, who was involved, why it was memorable"). During your 1-minute prep, jot one keyword per bullet point — not full sentences, just memory triggers. When speaking, address each bullet point in order, then add a closing thought if you have time left.',
+    example: 'If the bullets are "describe a gift, say who gave it, say why it was special" — cover all three in order, spending roughly equal time on each, rather than talking at length about only the first one.',
+  },
+  part3: {
+    duration: '4-5 min',
+    style: 'Abstract discussion linked to Part 2 topic',
+    tip: 'Use conditionals, hypotheticals, and speculation language; give developed answers (20-40 sec each).',
+    howTo: 'These questions are broader and more abstract than Part 1 (e.g. "How has gift-giving changed in your country?" rather than "What was your last gift?"). A good answer: gives a direct position, then develops it with a reason AND a specific example or comparison, and isn\'t afraid to speculate ("I think this is probably because...", "It\'s likely that...").',
+    example: 'Q: "Do you think technology has changed how people give gifts?" — Aim for: a clear position + a specific reason + a real-world example, roughly 4-5 sentences, not a one-line answer.',
+  },
 };
 
 export const SPEAKING_TOPICS = [
