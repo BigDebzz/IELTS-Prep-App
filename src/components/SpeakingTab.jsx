@@ -107,6 +107,12 @@ export default function SpeakingTab({ user, selectedDay }) {
         <strong>{info.duration}</strong> — {info.style}. {info.tip}
       </div>
 
+      <div style={s.guideBox}>
+        <p style={s.guideTitle}>How to answer well (start here if you're new to IELTS)</p>
+        <p style={s.guideText}>{info.howTo}</p>
+        {info.example && <p style={s.guideExample}><strong>Example:</strong> {info.example}</p>}
+      </div>
+
       <select style={s.input} value={topic} onChange={e => setTopic(e.target.value)}>
         {SPEAKING_TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
       </select>
@@ -168,6 +174,10 @@ const s = {
   hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
   input: { width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, marginBottom: 10 },
   ruleBox: { background: '#000000', borderRadius: 8, padding: 12, fontSize: 13, color: '#cbd5e1', marginBottom: 12 },
+  guideBox: { background: '#000000', borderRadius: 8, padding: 14, marginBottom: 12 },
+  guideTitle: { fontSize: 13, fontWeight: 700, color: '#8b8cf8', margin: '0 0 8px' },
+  guideText: { fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, margin: 0 },
+  guideExample: { fontSize: 12, color: '#a3a3a3', fontStyle: 'italic', marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a2a', lineHeight: 1.5 },
   recordRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 },
   orText: { fontSize: 12, color: '#64748b' },
   interimHint: { fontSize: 12, color: '#8b8cf8', marginBottom: 10, fontStyle: 'italic' },
