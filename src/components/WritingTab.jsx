@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react';
 import { scoreWriting } from '../lib/gemini';
-import { WRITING_BAND_DESCRIPTORS, writingPromptForDay } from '../data/ieltsContent';
+import { WRITING_BAND_DESCRIPTORS, WRITING_TASK2_TYPES, writingPromptForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 
 export default function WritingTab({ user, selectedDay }) {
   const daily = writingPromptForDay(selectedDay);
+  const guide = WRITING_TASK2_TYPES.find(t => t.type === daily.type);
   const [essay, setEssay] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
 
-  // Load any saved draft/result for this day when the day changes.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -36,7 +37,6 @@ export default function WritingTab({ user, selectedDay }) {
     return () => { cancelled = true; };
   }, [selectedDay, user.id]);
 
-  // Autosave the draft as you type (debounced) so switching tabs never loses it.
   useEffect(() => {
     if (!loaded) return;
     const timer = setTimeout(async () => {
@@ -77,8 +77,8 @@ export default function WritingTab({ user, selectedDay }) {
     <section style={s.section}>
       <h2 style={s.title}>Writing Practice — Day {selectedDay}</h2>
       <p style={s.hint}>
-        Today's prompt is generated from a real IELTS Task 2 question template ({daily.type}) on today's topic.
-        Your draft autosaves as you type — switching tabs or days won't lose it.
+        Today's prompt is a real IELTS Task 2 question type: <strong>{daily.type}</strong>. If this is new to you,
+        read the guide below before writing — it walks through exactly what each paragraph should do.
       </p>
 
       <div style={s.promptBox}>
@@ -86,11 +86,32 @@ export default function WritingTab({ user, selectedDay }) {
         <p style={s.promptText}>{daily.prompt}</p>
       </div>
 
+      <div style={s.guideBox}>
+        <button style={s.guideToggle} onClick={() => setShowGuide(!showGuide)}>
+          {showGuide ? '▾' : '▸'} How to structure this essay type (start here if you're new to IELTS)
+        </button>
+        {showGuide && guide && (
+          <div style={s.guideContent}>
+            {guide.howTo.map((step, i) => (
+              <div key={i} style={s.guideStep}>
+                <p style={s.guideStepTitle}>{i + 1}. {step.part}</p>
+                <p style={s.guideStepText}>{step.guidance}</p>
+              </div>
+            ))}
+            {guide.example && (
+              <div style={s.guideExample}>
+                <strong>Example:</strong> {guide.example}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       <form onSubmit={handleScore} style={s.form}>
         <textarea
           style={s.textareaBig}
           rows={12}
-          placeholder="Write your essay here (aim for 250+ words)"
+          placeholder="Write your essay here (aim for 250+ words). Follow the guide above — one paragraph per step."
           value={essay}
           onChange={e => setEssay(e.target.value)}
         />
@@ -106,6 +127,7 @@ export default function WritingTab({ user, selectedDay }) {
       {result && (
         <div style={s.card}>
           <h3 style={s.overallScore}>Overall: Band {result.overall}</h3>
+          <p style={s.resultHint}>This score reflects how close your essay is to the official band descriptors below — not just whether the AI liked it. Read the specific feedback to see exactly what to fix next time.</p>
           <div style={s.criteriaGrid}>
             <div style={s.criterion}><strong>Task Response</strong><br />{result.criteria.taskResponse}</div>
             <div style={s.criterion}><strong>Coherence & Cohesion</strong><br />{result.criteria.coherence}</div>
@@ -136,8 +158,15 @@ const s = {
   section: { background: '#121212', borderRadius: 12, padding: 20 },
   title: { fontSize: 18, margin: '0 0 8px' },
   hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
-  promptBox: { background: '#000000', borderRadius: 8, padding: 14, marginBottom: 16, fontSize: 13, color: '#a5b4fc' },
+  promptBox: { background: '#000000', borderRadius: 8, padding: 14, marginBottom: 12, fontSize: 13, color: '#a5b4fc' },
   promptText: { color: '#f5f5f5', fontSize: 15, marginTop: 8, lineHeight: 1.5 },
+  guideBox: { background: '#000000', borderRadius: 8, marginBottom: 16, overflow: 'hidden' },
+  guideToggle: { width: '100%', textAlign: 'left', padding: 14, background: 'none', border: 'none', color: '#8b8cf8', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
+  guideContent: { padding: '0 14px 14px' },
+  guideStep: { marginBottom: 12 },
+  guideStepTitle: { fontSize: 13, fontWeight: 700, color: '#f5f5f5', margin: '0 0 4px' },
+  guideStepText: { fontSize: 13, color: '#cbd5e1', lineHeight: 1.5, margin: 0 },
+  guideExample: { fontSize: 12, color: '#a3a3a3', fontStyle: 'italic', marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a2a', lineHeight: 1.5 },
   form: { display: 'flex', flexDirection: 'column', gap: 10 },
   textareaBig: { padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', lineHeight: 1.5 },
   metaRow: { display: 'flex', justifyContent: 'space-between' },
@@ -146,7 +175,8 @@ const s = {
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
   error: { color: '#f87171', fontSize: 13 },
   card: { background: '#000000', borderRadius: 10, padding: 16, marginTop: 16 },
-  overallScore: { fontSize: 20, color: '#4ade80', margin: '0 0 12px' },
+  overallScore: { fontSize: 20, color: '#4ade80', margin: '0 0 8px' },
+  resultHint: { fontSize: 12, color: '#a3a3a3', marginBottom: 12, lineHeight: 1.5 },
   criteriaGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 },
   criterion: { fontSize: 12, background: '#121212', padding: 10, borderRadius: 8, lineHeight: 1.4 },
   feedback: { fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap' },
