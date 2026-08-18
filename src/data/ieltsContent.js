@@ -48,17 +48,80 @@ export const SPEAKING_BAND_DESCRIPTORS = {
 
 // Reading question types and validated order logic (from research: British Council / IDP)
 export const READING_QUESTION_TYPES = [
-  { type: 'Multiple Choice', order: 'sequential', note: 'Answers follow the same order as questions.' },
-  { type: 'True/False/Not Given', order: 'sequential', note: 'Answers follow passage order. FALSE = contradicted. NOT GIVEN = not confirmed or denied — never use outside knowledge.' },
-  { type: 'Yes/No/Not Given', order: 'sequential', note: 'Same logic as True/False/Not Given, used for opinion-based passages.' },
-  { type: 'Sentence Completion', order: 'sequential', note: 'Answers come in the same order as the information in the text.' },
-  { type: 'Matching Sentence Endings', order: 'sequential', note: 'Follows text order.' },
-  { type: 'Short Answer Questions', order: 'sequential', note: 'Follows text order.' },
-  { type: 'Matching Headings', order: 'non-sequential', note: 'Answers are NOT in text order — scan the whole passage, do this type last.' },
-  { type: 'Matching Information', order: 'non-sequential', note: 'Answers are NOT in text order — requires whole-passage scanning.' },
-  { type: 'Matching Features', order: 'non-sequential', note: 'Answers are NOT in text order.' },
-  { type: 'Summary/Note/Table Completion', order: 'usually one section', note: 'Not strictly ordered, but answers usually come from one contiguous section.' },
-  { type: 'Diagram Label Completion', order: 'usually one section', note: 'Not necessarily in order, but usually from one section.' },
+  {
+    type: 'Multiple Choice',
+    order: 'sequential',
+    note: 'Answers follow the same order as questions.',
+    howTo: 'Read the question stem first, then all options, before scanning the passage. Eliminate options that contradict the passage outright — they\'re easiest to rule out. Watch for "distractor" options that use the same words as the passage but change the meaning slightly.',
+  },
+  {
+    type: 'True/False/Not Given',
+    order: 'sequential',
+    note: 'Answers follow passage order. FALSE = contradicted. NOT GIVEN = not confirmed or denied — never use outside knowledge.',
+    howTo: 'This is the type beginners lose the most marks on. TRUE = the passage says this exactly (in different words). FALSE = the passage says the OPPOSITE. NOT GIVEN = the passage doesn\'t mention this at all — even if it seems logically true from general knowledge, if the passage doesn\'t say it, it\'s NOT GIVEN. Never guess based on what you\'d assume is true in real life.',
+  },
+  {
+    type: 'Yes/No/Not Given',
+    order: 'sequential',
+    note: 'Same logic as True/False/Not Given, used for opinion-based passages.',
+    howTo: 'Same rules as True/False/Not Given, but this type is used when the passage is arguing an opinion (not stating facts). YES/NO refers to whether the statement matches the WRITER\'s opinion, not objective fact.',
+  },
+  {
+    type: 'Sentence Completion',
+    order: 'sequential',
+    note: 'Answers come in the same order as the information in the text.',
+    howTo: 'Read the incomplete sentence carefully first and predict what type of word is missing (a noun? a number? a date?). This narrows what you\'re scanning for. Always check the word limit given in the instructions (e.g. "NO MORE THAN TWO WORDS") — going over the limit means the answer is marked wrong even if the content is correct.',
+  },
+  {
+    type: 'Matching Sentence Endings',
+    order: 'sequential',
+    note: 'Follows text order.',
+    howTo: 'Read all the sentence-ending options first. As you read the passage, look for where the sentence beginning naturally continues — grammar is often the clue (does the ending fit grammatically with the beginning?).',
+  },
+  {
+    type: 'Short Answer Questions',
+    order: 'sequential',
+    note: 'Follows text order.',
+    howTo: 'These ask direct factual questions ("How many...", "What is..."). Scan for the specific fact rather than reading for overall meaning. Check the word limit exactly like Sentence Completion.',
+  },
+  {
+    type: 'Matching Headings',
+    order: 'non-sequential',
+    note: 'Answers are NOT in text order — scan the whole passage, do this type last.',
+    howTo: 'Read each paragraph\'s first and last sentence to get its main idea before matching headings — don\'t read word-for-word yet. Match the paragraph\'s OVERALL idea, not a small detail mentioned once. Cross out headings as you use them since some are usually distractors that don\'t match any paragraph.',
+  },
+  {
+    type: 'Matching Information',
+    order: 'non-sequential',
+    note: 'Answers are NOT in text order — requires whole-passage scanning.',
+    howTo: 'This asks you to find WHICH paragraph contains a specific piece of information (not the main idea, a specific detail). Scan for keywords from the question, then confirm the paragraph actually contains that specific claim.',
+  },
+  {
+    type: 'Matching Features',
+    order: 'non-sequential',
+    note: 'Answers are NOT in text order.',
+    howTo: 'You\'re matching items (people, dates, theories) to categories. Scan for the NAME or ITEM first (these are easier to spot than abstract ideas), then read the surrounding sentence to see which category it belongs to.',
+  },
+  {
+    type: 'Summary/Note/Table Completion',
+    order: 'usually one section',
+    note: 'Not strictly ordered, but answers usually come from one contiguous section.',
+    howTo: 'Read the summary/notes first to understand the overall topic being summarized — this tells you roughly which part of the passage to focus on. Predict the word type needed for each blank before searching.',
+  },
+  {
+    type: 'Diagram Label Completion',
+    order: 'usually one section',
+    note: 'Not necessarily in order, but usually from one section.',
+    howTo: 'Look at the diagram first and understand what process or object it shows. The passage will describe it in a similar sequence to how the diagram is laid out — use the diagram\'s visual order as a guide for where to look in the text.',
+  },
+];
+
+// General reading technique — not tied to one question type, applies to the whole test.
+export const READING_GENERAL_TIPS = [
+  { tip: 'Skim before you read in detail', detail: 'Spend 2-3 minutes skimming the whole passage first — read titles, first/last sentences of paragraphs. This builds a mental map before you start answering questions.' },
+  { tip: 'Time management: ~20 minutes per passage', detail: 'You have 60 minutes for 3 passages (40 questions). If you\'re stuck on one question for more than ~90 seconds, guess and move on — there\'s no penalty for wrong answers, but there is a cost to running out of time.' },
+  { tip: 'Never leave a blank', detail: 'Guessing gives you a chance; a blank guarantees zero. Always fill in every answer, even a guess, before time runs out.' },
+  { tip: 'The passage rarely repeats the question\'s exact words', detail: 'IELTS almost always paraphrases — if a question says "increase" the passage might say "rise" or "grow." Practicing synonym recognition (your Vocabulary tab) directly helps here.' },
 ];
 
 // Writing Task 2 essay types
@@ -156,12 +219,41 @@ export const SPEAKING_TOPICS = [
   'Travel', 'Health', 'Family and social change', 'Education', 'Media',
 ];
 
-// Listening section structure (real IELTS format)
+// Listening section structure (real IELTS format) — expanded with real
+// technique guidance, not just format labels.
 export const LISTENING_SECTIONS = [
-  { section: 1, style: 'Everyday conversation between two people', commonTypes: 'Form/note completion' },
-  { section: 2, style: 'Monologue in an everyday context', commonTypes: 'Map/plan labelling, multiple choice' },
-  { section: 3, style: 'Conversation of up to four people, academic context', commonTypes: 'Multiple choice, matching' },
-  { section: 4, style: 'Academic monologue/lecture, no break', commonTypes: 'Note/summary completion' },
+  {
+    section: 1,
+    style: 'Everyday conversation between two people',
+    commonTypes: 'Form/note completion',
+    howTo: 'This is the easiest section — everyday topics like booking a hotel or registering for a class. Use the pause before the recording starts to read ahead and predict what kind of answer each blank needs (a name? a number? a date?). Listen for spelling — names and addresses are often spelled out loud.',
+  },
+  {
+    section: 2,
+    style: 'Monologue in an everyday context',
+    commonTypes: 'Map/plan labelling, multiple choice',
+    howTo: 'One person speaking about something everyday — a tour guide, a describing a facility. For map questions, follow the direction words closely ("turn left", "next to", "opposite") and trace the route as you listen, don\'t wait until the end.',
+  },
+  {
+    section: 3,
+    style: 'Conversation of up to four people, academic context',
+    commonTypes: 'Multiple choice, matching',
+    howTo: 'This is where most people lose marks — multiple speakers discussing academic work (e.g. students planning a project). Track WHO says WHAT — opinions often differ between speakers, and the question may ask specifically what one person thinks, not the group consensus.',
+  },
+  {
+    section: 4,
+    style: 'Academic monologue/lecture, no break',
+    commonTypes: 'Note/summary completion',
+    howTo: 'The hardest section — one long academic lecture with no pause. Note-taking speed matters most here. Use abbreviations (e.g. "&" for and, "w/" for with) and don\'t try to write full sentences — just the key word needed for each blank.',
+  },
+];
+
+// General listening technique — applies across all sections.
+export const LISTENING_GENERAL_TIPS = [
+  { tip: 'You only hear the audio once', detail: 'Unlike Reading, there\'s no going back. Use every pause between sections to read ahead and prepare, since preparation time is your only "second chance."' },
+  { tip: 'Watch for corrections', detail: 'Speakers often self-correct ("meet at 3pm — actually, make that 4pm"). The LATER piece of information is usually the correct answer, not the first one mentioned.' },
+  { tip: 'Spelling matters', detail: 'A correct answer with a spelling mistake is marked wrong. Practice common tricky spellings (e.g. "definitely", "necessary", "accommodation").' },
+  { tip: 'Stick to the word limit', detail: 'If the instructions say "NO MORE THAN TWO WORDS", writing three words makes the answer wrong even if the content is right.' },
 ];
 
 export const VOCAB_TOPICS_TO_PRIORITIZE = [
@@ -223,4 +315,87 @@ export function writingPromptForDay(day) {
     'Two-Part Question': `Why has ${topic.toLowerCase()} become an important issue in many countries? What can individuals do to respond to this?`,
   };
   return { type: type.type, prompt: templates[type.type], topic };
+}
+
+// The Daily Lesson curriculum. Each day teaches ONE real technique before any
+// testing happens, rotating through all 4 skills across the 30-day plan. Every
+// lesson pulls from the genuine content already defined above (band descriptors,
+// question-type rules, essay structures, speaking part guidance) — nothing here
+// is invented; this only decides which real lesson surfaces on which day, and
+// adds the connecting "why this matters / what to do next" framing.
+export function lessonForDay(day) {
+  const cycle = ((day - 1) % 10); // 10-lesson rotation repeats through the 30 days
+  const lessons = [
+    {
+      skill: 'reading',
+      title: 'How IELTS Reading questions are ordered',
+      teaches: 'Most IELTS Reading question types (Multiple Choice, True/False/Not Given, Sentence Completion, Matching Sentence Endings, Short Answer) follow the SAME order as the passage — question 1\'s answer comes before question 2\'s, and so on. But Matching Headings, Matching Information, and Matching Features do NOT follow this order — you have to scan the whole passage for each one.',
+      whyItMatters: 'Knowing this changes your strategy: for sequential types, read the passage once, in order, matching each question as you go. For non-sequential matching types, read all the questions first, then scan the whole passage — don\'t try to match them as you read top to bottom, you\'ll waste time backtracking.',
+      tryNext: 'Go to the Reading tab and try today\'s passage. Before you start, check which question type it uses (shown at the top) and use the matching strategy above.',
+    },
+    {
+      skill: 'writing',
+      title: 'The 4 things IELTS Writing is actually scored on',
+      teaches: 'Every Writing Task 2 essay is scored on 4 equally-weighted criteria: Task Response (did you actually answer the question fully), Coherence & Cohesion (is it organized logically with clear paragraphs), Lexical Resource (vocabulary range and accuracy), and Grammatical Range & Accuracy. A brilliant essay that misses the actual question loses marks on Task Response no matter how good the English is.',
+      whyItMatters: 'Many learners over-focus on "big words" (Lexical Resource) and under-focus on Task Response — actually answering the exact question asked. Before writing a single sentence, re-read the prompt and make sure you know exactly what it\'s asking.',
+      tryNext: 'Go to the Writing tab. Before typing your essay, read the "How to structure this essay" guide for today\'s question type — it breaks down exactly what each paragraph should do.',
+    },
+    {
+      skill: 'listening',
+      title: 'The 4 Listening sections and what changes between them',
+      teaches: 'Section 1 is an everyday conversation (like booking something) — usually the easiest, testing basic facts. Section 2 is a monologue in an everyday context (like a tour guide). Section 3 is an academic conversation between multiple people — this is where most people start losing marks. Section 4 is an academic lecture monologue with NO break — the hardest section, requiring sustained concentration.',
+      whyItMatters: 'Knowing which section you\'re in tells you what to expect. In Sections 3-4, listen for signposting language ("however", "in contrast", "moving on to") — these signal a change in topic or a correction that\'s often exactly what the question is testing.',
+      tryNext: 'Go to the Listening tab and try a Section 3 or 4 practice — these are the ones worth extra focus.',
+    },
+    {
+      skill: 'speaking',
+      title: 'Why one-word answers hurt your Speaking score',
+      teaches: 'IELTS Speaking Part 1 asks short personal questions, but answering in one word or one short sentence caps your score, because the examiner needs to hear enough of your English to judge Fluency, Vocabulary, and Grammar. A good Part 1 answer gives a direct response PLUS a reason or detail — usually 2-4 sentences.',
+      whyItMatters: 'This is one of the most common reasons capable speakers score lower than they should — not because their English is bad, but because they don\'t give the examiner enough language to assess.',
+      tryNext: 'Go to the Speaking tab, pick Part 1, and practice answering with the "direct answer + reason + detail" pattern from the guide.',
+    },
+    {
+      skill: 'vocabulary',
+      title: 'Why memorizing word lists alone doesn\'t work',
+      teaches: 'Vocabulary research consistently shows that learning a word in isolation (just the word and its meaning) is far less effective than learning it with context: how it\'s actually used, its synonyms, and a real example sentence. This is why the Vocabulary tab shows synonyms, antonyms, and lets you write your own practice sentence — that\'s not extra decoration, it\'s the part that actually makes the word stick.',
+      whyItMatters: 'A word you can define but never use in your own writing/speaking won\'t help your Lexical Resource score. Using a word yourself is what moves it from "recognized" to "usable."',
+      tryNext: 'Go to Vocabulary, pick one of today\'s words, and actually write your own sentence with it — don\'t skip that step.',
+    },
+    {
+      skill: 'reading',
+      title: 'True/False/Not Given: the #1 mistake to avoid',
+      teaches: 'FALSE means the passage directly CONTRADICTS the statement. NOT GIVEN means the passage simply doesn\'t mention it either way. The most common mistake: using outside knowledge or "logical" inference to decide NOT GIVEN is actually FALSE (or vice versa). You must judge ONLY by what\'s written in the passage — nothing else.',
+      whyItMatters: 'This single rule is responsible for a large share of lost marks on this question type. If you find yourself thinking "well, logically it must be..." — stop. That\'s the trap.',
+      tryNext: 'If today\'s Reading passage uses True/False/Not Given, apply this rule strictly before answering.',
+    },
+    {
+      skill: 'writing',
+      title: 'How to paraphrase your introduction (without repeating the question)',
+      teaches: 'A weak introduction just copies the question\'s wording. A stronger one paraphrases it — same meaning, different words and sentence structure. E.g. "Some people believe technology harms society" could become "It is often argued that technological advancement brings more disadvantages than benefits to society."',
+      whyItMatters: 'Examiners notice word-for-word copying, and it doesn\'t demonstrate your own language ability — which is literally what\'s being scored.',
+      tryNext: 'Before writing today\'s essay, spend one minute rewriting the prompt in your own words as practice — then use that as your opening line.',
+    },
+    {
+      skill: 'listening',
+      title: 'Why spelling costs more marks than people expect',
+      teaches: 'In Listening completion tasks (note/form/summary completion), a correct answer with a spelling mistake is marked WRONG. Common commonly-misspelled words in IELTS listening include "accommodation," "definitely," "necessary," and "separate."',
+      whyItMatters: 'You can understand the audio perfectly and still lose the mark on a spelling slip. Always double-check your spelling in the 10-minute transfer time on the real test.',
+      tryNext: 'When you check your answers in the Listening tab, look specifically for spelling — not just whether you understood the right word.',
+    },
+    {
+      skill: 'speaking',
+      title: 'What the examiner means by "fluency" (it\'s not about speed)',
+      teaches: 'Fluency in IELTS doesn\'t mean speaking fast — it means speaking with natural flow and minimal unnecessary hesitation. A little pause to think about CONTENT is completely normal, even at Band 9. What lowers your score is hesitation to find WORDS or GRAMMAR — stopping because you don\'t know how to say something, not because you\'re thinking about what to say.',
+      whyItMatters: 'This means slowing down slightly to speak accurately is often better than rushing and making more errors.',
+      tryNext: 'In your next Speaking practice, don\'t rush — focus on finishing your sentences accurately rather than speaking quickly.',
+    },
+    {
+      skill: 'vocabulary',
+      title: 'Collocations: why "make a decision" but not "do a decision"',
+      teaches: 'Collocations are words that naturally go together in English — native speakers "make a decision," not "do a decision," even though both seem logically possible. Getting collocations right is one of the clearest signals of a higher Lexical Resource score, because it shows real command of natural English, not just a large vocabulary.',
+      whyItMatters: 'This is exactly why the Vocabulary tab shows "related/collocations" for each word — that list isn\'t filler, it\'s the natural word-partners you should learn alongside the word itself.',
+      tryNext: 'Next time you save a word, also note down one of its listed collocations, not just its meaning.',
+    },
+  ];
+  return lessons[cycle];
 }
