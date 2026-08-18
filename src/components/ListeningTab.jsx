@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { generateListening } from '../lib/gemini';
-import { LISTENING_SECTIONS, topicForDay } from '../data/ieltsContent';
+import { LISTENING_SECTIONS, LISTENING_GENERAL_TIPS, topicForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 
 export default function ListeningTab({ user, selectedDay }) {
@@ -97,6 +97,22 @@ export default function ListeningTab({ user, selectedDay }) {
         <strong>Section {section}:</strong> {sectionInfo.style} — {sectionInfo.commonTypes}
       </div>
 
+      {sectionInfo.howTo && (
+        <div style={s.howToBox}>
+          <strong>How to approach this section:</strong> {sectionInfo.howTo}
+        </div>
+      )}
+
+      <details style={s.tipsBox}>
+        <summary style={s.tipsSummary}>General Listening technique (start here if you're new to IELTS)</summary>
+        {LISTENING_GENERAL_TIPS.map((t, i) => (
+          <div key={i} style={s.tipItem}>
+            <p style={s.tipTitle}>{t.tip}</p>
+            <p style={s.tipDetail}>{t.detail}</p>
+          </div>
+        ))}
+      </details>
+
       <div style={s.form}>
         <select style={s.input} value={section} onChange={e => setSection(Number(e.target.value))}>
           {LISTENING_SECTIONS.map(sec => <option key={sec.section} value={sec.section}>Section {sec.section}</option>)}
@@ -153,6 +169,12 @@ const s = {
   title: { fontSize: 18, margin: '0 0 8px' },
   hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
   ruleBox: { background: '#000000', borderRadius: 8, padding: 12, fontSize: 13, color: '#cbd5e1', marginBottom: 16 },
+  howToBox: { background: '#000000', borderRadius: 8, padding: 12, fontSize: 12, color: '#cbd5e1', marginBottom: 12, lineHeight: 1.5 },
+  tipsBox: { background: '#000000', borderRadius: 8, marginBottom: 16, padding: 12 },
+  tipsSummary: { cursor: 'pointer', color: '#8b8cf8', fontSize: 13, fontWeight: 600 },
+  tipItem: { marginTop: 10 },
+  tipTitle: { fontSize: 13, fontWeight: 700, color: '#f5f5f5', margin: '0 0 3px' },
+  tipDetail: { fontSize: 12, color: '#cbd5e1', margin: 0, lineHeight: 1.5 },
   form: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 },
   input: { padding: '10px 12px', borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14 },
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
