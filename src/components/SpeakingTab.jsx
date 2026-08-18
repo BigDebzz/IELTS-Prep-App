@@ -197,6 +197,7 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
       )}
 
       <textarea style={s.textarea} rows={6} placeholder="Your answer (spoken or typed) appears here" value={transcript} onChange={e => setTranscript(e.target.value)} />
+      <p style={s.saveStatus}>{saving ? 'Saving…' : loaded ? 'Saved' : ''}</p>
       <p style={s.hint}>If you spot a mishear (e.g. it wrote "dongle" instead of "dung"), just edit the text box directly — the transcript is fully editable before you submit.</p>
 
       <button style={s.button} onClick={handleScore} disabled={loading || !transcript.trim()}>{loading ? 'Scoring…' : 'Get AI band feedback'}</button>
@@ -245,6 +246,7 @@ const s = {
   recordRow: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 },
   orText: { fontSize: 12, color: '#64748b' },
   interimHint: { fontSize: 12, color: '#8b8cf8', marginBottom: 10, fontStyle: 'italic' },
+  saveStatus: { fontSize: 12, color: '#4ade80', margin: '4px 0' },
   textarea: { width: '100%', padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', marginBottom: 10 },
   button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
   error: { color: '#f87171', fontSize: 13 },
