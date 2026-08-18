@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { scoreSpeaking } from '../lib/gemini';
 import { SPEAKING_STRUCTURE, SPEAKING_TOPICS, SPEAKING_BAND_DESCRIPTORS } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
+import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
 
-export default function SpeakingTab({ user, selectedDay }) {
+export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
   const [part, setPart] = useState('part1');
   const [topic, setTopic] = useState(SPEAKING_TOPICS[0]);
   const [question, setQuestion] = useState('');
@@ -11,12 +12,52 @@ export default function SpeakingTab({ user, selectedDay }) {
   const [interim, setInterim] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [recording, setRecording] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const recognitionRef = useRef(null);
   const manualStopRef = useRef(false);
 
   const info = SPEAKING_STRUCTURE[part];
+
+  // Load any saved session for this day when the day changes.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoaded(false);
+      setTranscript(''); setResult(null); setError(''); setQuestion('');
+      const { data } = await supabase
+        .from('speaking_sessions')
+        .select('part, question, transcript, result')
+        .eq('user_id', user.id)
+        .eq('day_number', selectedDay)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setPart(data.part || 'part1');
+        setQuestion(data.question || '');
+        setTranscript(data.transcript || '');
+        setResult(data.result || null);
+      }
+      if (!cancelled) setLoaded(true);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [selectedDay, user.id]);
+
+  // Autosave transcript as you speak/type/edit, same pattern as Writing.
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(async () => {
+      setSaving(true);
+      await supabase.from('speaking_sessions').upsert(
+        { user_id: user.id, day_number: selectedDay, part, question, transcript, result },
+        { onConflict: 'user_id,day_number' }
+      );
+      setSaving(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [transcript, part, question, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startVoiceInput() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -80,6 +121,10 @@ export default function SpeakingTab({ user, selectedDay }) {
       const q = question.trim() || `${part} — topic: ${topic}`;
       const data = await scoreSpeaking(part, q, transcript);
       setResult(data);
+      await supabase.from('speaking_sessions').upsert(
+        { user_id: user.id, day_number: selectedDay, part, question: q, transcript, result: data },
+        { onConflict: 'user_id,day_number' }
+      );
       await supabase.from('mock_scores').insert({
         user_id: user.id,
         day_number: selectedDay,
@@ -94,7 +139,26 @@ export default function SpeakingTab({ user, selectedDay }) {
 
   return (
     <section style={s.section}>
-      <h2 style={s.title}>Speaking Practice</h2>
+      <h2 style={s.title}>Speaking Practice — Day {selectedDay}</h2>
+
+      <SessionHistory
+        user={user}
+        table="speaking_sessions"
+        label="Speaking"
+        onSelectDay={onNavigateDay}
+        renderItem={(sess) => (
+          <>
+            <div style={hs.itemTop}>
+              <span style={hs.dayTag}>Day {sess.day_number}</span>
+              <span style={hs.typeTag}>{sess.part}</span>
+              {sess.result?.overall != null && <span style={hs.scoreTag}>Band {sess.result.overall}</span>}
+            </div>
+            <p style={hs.preview}>{sess.question || sess.transcript}</p>
+            <p style={hs.metaLine}>{(sess.transcript || '').trim().split(/\s+/).filter(Boolean).length} words</p>
+          </>
+        )}
+      />
+
       <p style={s.hint}>Speak using your browser's voice input (or type) — feedback is scored against real IELTS Speaking descriptors. Pronunciation can't be judged from text, so the AI will say so honestly rather than guess.</p>
 
       <select style={s.input} value={part} onChange={e => setPart(e.target.value)}>
