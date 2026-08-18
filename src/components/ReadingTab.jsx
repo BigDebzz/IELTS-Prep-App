@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { generateReading } from '../lib/gemini';
 import { lookupWord } from '../lib/vocabApi';
 import { supabase } from '../lib/supabase';
-import { READING_QUESTION_TYPES, topicForDay } from '../data/ieltsContent';
+import { READING_QUESTION_TYPES, READING_GENERAL_TIPS, topicForDay } from '../data/ieltsContent';
 import { OFFICIAL_PASSAGES } from '../data/officialReadingPassages';
 import { theme } from '../styles/theme';
 
@@ -199,6 +199,16 @@ export default function ReadingTab({ user, selectedDay }) {
         </p>
       )}
 
+      <details style={s.tipsBox}>
+        <summary style={s.tipsSummary}>General Reading technique (start here if you're new to IELTS)</summary>
+        {READING_GENERAL_TIPS.map((t, i) => (
+          <div key={i} style={s.tipItem}>
+            <p style={s.tipTitle}>{t.tip}</p>
+            <p style={s.tipDetail}>{t.detail}</p>
+          </div>
+        ))}
+      </details>
+
       {!officialForDay && !practice && (
         <button style={s.button} onClick={handleGenerateAI} disabled={loading}>
           {loading ? 'Generating…' : `Generate today's passage`}
@@ -215,6 +225,14 @@ export default function ReadingTab({ user, selectedDay }) {
               <span style={isOfficial ? s.officialTag : s.aiTag}>{isOfficial ? 'Official' : 'AI-generated'}</span>
             </div>
             <p style={s.questionTypeLabel}>{practice.questionType}</p>
+            {(() => {
+              const typeGuide = READING_QUESTION_TYPES.find(t => t.type === practice.questionType);
+              return typeGuide?.howTo ? (
+                <div style={s.howToBox}>
+                  <strong>How to answer this type:</strong> {typeGuide.howTo}
+                </div>
+              ) : null;
+            })()}
             {bookmark !== null && (
               <button style={s.resumeBtn} onClick={scrollToBookmark}>↓ Resume where I left off (paragraph {bookmark + 1})</button>
             )}
@@ -295,6 +313,12 @@ const s = {
   officialTag: { fontSize: 10, fontWeight: 700, color: '#4ade80', background: '#4ade8022', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
   aiTag: { fontSize: 10, fontWeight: 700, color: theme.colors.coral, background: theme.colors.coral + '22', padding: '3px 8px', borderRadius: 20, whiteSpace: 'nowrap' },
   questionTypeLabel: { fontSize: 12, color: theme.colors.lavender, marginBottom: 12 },
+  tipsBox: { background: theme.colors.bg, borderRadius: 8, marginBottom: 16, padding: 12 },
+  tipsSummary: { cursor: 'pointer', color: theme.colors.lavender, fontSize: 13, fontWeight: 600 },
+  tipItem: { marginTop: 10 },
+  tipTitle: { fontSize: 13, fontWeight: 700, color: theme.colors.text, margin: '0 0 3px' },
+  tipDetail: { fontSize: 12, color: '#cbd5e1', margin: 0, lineHeight: 1.5 },
+  howToBox: { background: theme.colors.bg, borderRadius: 8, padding: 12, fontSize: 12, color: '#cbd5e1', marginBottom: 12, lineHeight: 1.5 },
   paragraph: { fontSize: 14, lineHeight: 1.8, marginBottom: 6 },
   paragraphWrap: { marginBottom: 14, padding: 8, borderRadius: 8, transition: 'background 0.2s' },
   paragraphBookmarked: { background: theme.colors.lavender + '15', boxShadow: `0 0 0 1px ${theme.colors.lavender}55` },
