@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { generateListening } from '../lib/gemini';
 import { LISTENING_SECTIONS, LISTENING_GENERAL_TIPS, topicForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
+import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
 
-export default function ListeningTab({ user, selectedDay }) {
+export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
   const dayTopic = topicForDay(selectedDay);
   const [section, setSection] = useState(1);
   const [practice, setPractice] = useState(null);
@@ -86,6 +87,23 @@ export default function ListeningTab({ user, selectedDay }) {
   return (
     <section style={s.section}>
       <h2 style={s.title}>Listening Practice — Day {selectedDay}</h2>
+
+      <SessionHistory
+        user={user}
+        table="listening_sessions"
+        label="Listening"
+        onSelectDay={onNavigateDay}
+        renderItem={(sess) => (
+          <>
+            <div style={hs.itemTop}>
+              <span style={hs.dayTag}>Day {sess.day_number}</span>
+              <span style={hs.typeTag}>Section {sess.section}</span>
+            </div>
+            <p style={hs.preview}>{sess.practice?.instructions || 'Listening practice'}</p>
+            <p style={hs.metaLine}>{Object.keys(sess.answers || {}).length} answers given</p>
+          </>
+        )}
+      />
       <p style={s.hint}>
         Today's topic: <strong style={{ color: '#8b8cf8' }}>{dayTopic}</strong>. Honest note: there's no free, legal
         way to bake in real IELTS recordings. This uses your browser's built-in text-to-speech to read an AI-written
