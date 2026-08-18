@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { scoreWriting } from '../lib/gemini';
 import { WRITING_BAND_DESCRIPTORS, WRITING_TASK2_TYPES, writingPromptForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
+import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
 
-export default function WritingTab({ user, selectedDay }) {
+export default function WritingTab({ user, selectedDay, onNavigateDay }) {
   const daily = writingPromptForDay(selectedDay);
   const guide = WRITING_TASK2_TYPES.find(t => t.type === daily.type);
   const [essay, setEssay] = useState('');
@@ -76,6 +77,25 @@ export default function WritingTab({ user, selectedDay }) {
   return (
     <section style={s.section}>
       <h2 style={s.title}>Writing Practice — Day {selectedDay}</h2>
+
+      <SessionHistory
+        user={user}
+        table="writing_sessions"
+        label="Writing"
+        onSelectDay={onNavigateDay}
+        renderItem={(sess) => (
+          <>
+            <div style={hs.itemTop}>
+              <span style={hs.dayTag}>Day {sess.day_number}</span>
+              <span style={hs.typeTag}>{sess.task_type}</span>
+              {sess.result?.overall != null && <span style={hs.scoreTag}>Band {sess.result.overall}</span>}
+            </div>
+            <p style={hs.preview}>{sess.prompt}</p>
+            <p style={hs.metaLine}>{(sess.essay || '').trim().split(/\s+/).filter(Boolean).length} words</p>
+          </>
+        )}
+      />
+
       <p style={s.hint}>
         Today's prompt is a real IELTS Task 2 question type: <strong>{daily.type}</strong>. If this is new to you,
         read the guide below before writing — it walks through exactly what each paragraph should do.
