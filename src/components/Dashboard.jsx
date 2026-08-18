@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { signOut } from '../lib/useAuth';
 import { theme } from '../styles/theme';
+import LearnTab from './LearnTab';
 import TasksTab from './TasksTab';
 import VocabularyTab from './VocabularyTab';
 import ReadingTab from './ReadingTab';
@@ -29,7 +30,7 @@ function rawDayFromStart(startDate) {
 export default function Dashboard({ user }) {
   const [startDate, setStartDate] = useState(() => localStorage.getItem('ielts_start_date') || new Date().toISOString().slice(0, 10));
   const [selectedDay, setSelectedDay] = useState(1);
-  const [tab, setTab] = useState('tasks');
+  const [tab, setTab] = useState('learn');
 
   useEffect(() => {
     localStorage.setItem('ielts_start_date', startDate);
@@ -37,6 +38,7 @@ export default function Dashboard({ user }) {
   }, [startDate]);
 
   const tabs = [
+    { key: 'learn', label: 'Daily Tips' },
     { key: 'tasks', label: 'Today' },
     { key: 'vocabulary', label: 'Vocabulary' },
     { key: 'reading', label: 'Reading' },
@@ -111,6 +113,7 @@ export default function Dashboard({ user }) {
         </div>
 
         <main style={s.main}>
+          {tab === 'learn' && <LearnTab user={user} selectedDay={selectedDay} />}
           {tab === 'tasks' && <TasksTab user={user} selectedDay={selectedDay} />}
           {tab === 'vocabulary' && <VocabularyTab user={user} selectedDay={selectedDay} />}
           {tab === 'reading' && <ReadingTab user={user} selectedDay={selectedDay} />}
