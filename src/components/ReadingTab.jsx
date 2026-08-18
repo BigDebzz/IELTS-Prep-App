@@ -5,18 +5,20 @@ import { supabase } from '../lib/supabase';
 import { READING_QUESTION_TYPES, READING_GENERAL_TIPS, topicForDay } from '../data/ieltsContent';
 import { OFFICIAL_PASSAGES } from '../data/officialReadingPassages';
 import { theme } from '../styles/theme';
+import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
 
 function cleanWord(raw) {
   return raw.replace(/[^a-zA-Z'-]/g, '');
 }
 
-export default function ReadingTab({ user, selectedDay }) {
+export default function ReadingTab({ user, selectedDay, onNavigateDay }) {
   const [practice, setPractice] = useState(null);
   const [isOfficial, setIsOfficial] = useState(false);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   const [lookup, setLookup] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
@@ -40,23 +42,61 @@ export default function ReadingTab({ user, selectedDay }) {
   const dayTopic = topicForDay(selectedDay);
 
   useEffect(() => {
-    setAnswers({});
-    setShowResults(false);
-    setLookup(null);
-    if (officialForDay) {
-      setPractice({
-        passage: officialForDay.passage,
-        instructions: officialForDay.instructions,
-        questions: officialForDay.questions,
-        title: officialForDay.title,
-        questionType: officialForDay.questionType,
-      });
-      setIsOfficial(true);
-    } else {
-      setPractice(null);
-      setIsOfficial(false);
+    let cancelled = false;
+    async function init() {
+      setLoaded(false);
+      setShowResults(false);
+      setLookup(null);
+
+      if (officialForDay) {
+        setPractice({
+          passage: officialForDay.passage,
+          instructions: officialForDay.instructions,
+          questions: officialForDay.questions,
+          title: officialForDay.title,
+          questionType: officialForDay.questionType,
+        });
+        setIsOfficial(true);
+      } else {
+        setPractice(null);
+        setIsOfficial(false);
+      }
+
+      // Load any saved answers (and, for AI days, the saved passage itself) for this day.
+      const { data } = await supabase
+        .from('reading_practice_sessions')
+        .select('is_official, practice, answers')
+        .eq('user_id', user.id)
+        .eq('day_number', selectedDay)
+        .maybeSingle();
+
+      if (!cancelled && data) {
+        setAnswers(data.answers || {});
+        if (!officialForDay && data.practice) {
+          setPractice(data.practice);
+          setIsOfficial(false);
+        }
+      } else if (!cancelled) {
+        setAnswers({});
+      }
+      if (!cancelled) setLoaded(true);
     }
+    init();
+    return () => { cancelled = true; };
   }, [selectedDay]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist practice content + answers so switching tabs/days never loses progress,
+  // and so past days show up in Reading History.
+  useEffect(() => {
+    if (!loaded || !practice) return;
+    const timer = setTimeout(async () => {
+      await supabase.from('reading_practice_sessions').upsert(
+        { user_id: user.id, day_number: selectedDay, is_official: isOfficial, practice, answers },
+        { onConflict: 'user_id,day_number' }
+      );
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [practice, answers, isOfficial, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function loadBookmark() {
@@ -185,6 +225,23 @@ export default function ReadingTab({ user, selectedDay }) {
   return (
     <section style={s.section}>
       <h2 style={s.title}>Reading Practice — Day {selectedDay}</h2>
+
+      <SessionHistory
+        user={user}
+        table="reading_practice_sessions"
+        label="Reading"
+        onSelectDay={onNavigateDay}
+        renderItem={(sess) => (
+          <>
+            <div style={hs.itemTop}>
+              <span style={hs.dayTag}>Day {sess.day_number}</span>
+              <span style={hs.typeTag}>{sess.is_official ? 'Official' : 'AI-generated'}</span>
+            </div>
+            <p style={hs.preview}>{sess.practice?.title || sess.practice?.questionType || 'Reading practice'}</p>
+            <p style={hs.metaLine}>{Object.keys(sess.answers || {}).length} answers given</p>
+          </>
+        )}
+      />
 
       {officialForDay ? (
         <p style={s.hint}>
