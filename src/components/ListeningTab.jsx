@@ -172,7 +172,13 @@ export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
             </div>
           ))}
           {!showResults ? (
-            <button style={s.button} onClick={() => setShowResults(true)}>Check answers</button>
+            <button style={s.button} onClick={async () => {
+              setShowResults(true);
+              await supabase.from('listening_sessions').upsert(
+                { user_id: user.id, day_number: selectedDay, section, practice, answers },
+                { onConflict: 'user_id,day_number' }
+              );
+            }}>Check answers</button>
           ) : (
             <p style={s.scoreText}>Score: {score} / {practice.questions.length}</p>
           )}
