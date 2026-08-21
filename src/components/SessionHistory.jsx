@@ -17,7 +17,14 @@ export default function SessionHistory({ user, table, label, renderItem, onSelec
         .select('*')
         .eq('user_id', user.id)
         .order('day_number', { ascending: false });
-      if (!error) setSessions(data || []);
+      if (!error) setSessions((data || []).filter(s => {
+        // Filter out empty sessions — rows that exist but have no real content yet.
+        if (table === 'writing_sessions') return s.essay && s.essay.trim().length > 10;
+        if (table === 'speaking_sessions') return s.transcript && s.transcript.trim().length > 10;
+        if (table === 'listening_sessions') return s.practice != null;
+        if (table === 'reading_practice_sessions') return s.practice != null;
+        return true;
+      }));
       setLoading(false);
     }
     load();
