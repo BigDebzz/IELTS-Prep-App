@@ -68,43 +68,71 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
     setError('');
     manualStopRef.current = false;
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    // interim results let you SEE live what it's hearing, so a mishear (e.g. "dongle" for
-    // "dung") is visible immediately instead of discovered after you submit.
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    // accumulatedRef holds the committed final text across all restart sessions.
+    // Initialize to empty string — NOT to transcript, which caused doubling on restart.
+    // Existing transcript text (loaded from Supabase) stays as-is; new speech appends to it.
+    const accumulatedRef = { current: '' };
 
-    recognition.onresult = (event) => {
-      let finalChunk = '';
-      let interimChunk = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const text = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalChunk += text + ' ';
-        else interimChunk += text;
-      }
-      if (finalChunk) setTranscript(prev => (prev ? prev + ' ' : '') + finalChunk.trim());
-      setInterim(interimChunk);
-    };
+    function createSession() {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      // interimResults: true gives live feedback BUT causes a subtle bug:
+      // each interim event re-sends the growing partial phrase from index 0
+      // within that utterance. We guard against this by ONLY acting on isFinal
+      // results and using event.resultIndex to skip already-processed ones.
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-    // Most browsers auto-stop after a few seconds of silence (which is why pausing
-    // for a comma used to cut you off). Auto-restart unless YOU pressed stop.
-    recognition.onend = () => {
-      if (!manualStopRef.current) {
-        try { recognition.start(); } catch (e) { /* already running */ }
-      } else {
-        setRecording(false);
-        setInterim('');
-      }
-    };
+      recognition.onresult = (event) => {
+        let finalChunk = '';
+        let interimChunk = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const text = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalChunk += text + ' ';
+          } else {
+            // Only show the LAST interim chunk — not a growing concatenation
+            interimChunk = text;
+          }
+        }
+        if (finalChunk.trim()) {
+          accumulatedRef.current = (accumulatedRef.current
+            ? accumulatedRef.current + ' '
+            : '') + finalChunk.trim();
+          // Append to whatever was already in the transcript box (loaded from Supabase)
+          // rather than replacing it — preserves previously saved text.
+          setTranscript(prev => {
+            const base = prev ? prev.trim() : '';
+            return base ? base + ' ' + finalChunk.trim() : finalChunk.trim();
+          });
+        }
+        if (interimChunk) setInterim(interimChunk);
+      };
 
-    recognition.onerror = (event) => {
-      if (event.error === 'no-speech' || event.error === 'aborted') return; // expected during pauses, ignore
-      setError('Voice input error: ' + event.error);
-    };
+      recognition.onend = () => {
+        if (!manualStopRef.current) {
+          try {
+            const next = createSession();
+            recognitionRef.current = next;
+            next.start();
+          } catch (e) { /* ignore */ }
+        } else {
+          setRecording(false);
+          setInterim('');
+        }
+      };
 
-    recognitionRef.current = recognition;
-    recognition.start();
+      recognition.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'aborted') return;
+        setError('Voice input error: ' + event.error);
+      };
+
+      return recognition;
+    }
+
+    const firstSession = createSession();
+    recognitionRef.current = firstSession;
+    firstSession.start();
     setRecording(true);
   }
 
