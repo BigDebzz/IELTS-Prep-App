@@ -325,7 +325,13 @@ export default function ReadingTab({ user, selectedDay, onNavigateDay }) {
               </div>
             ))}
             {!showResults ? (
-              <button style={s.button} onClick={() => setShowResults(true)}>Check answers</button>
+              <button style={s.button} onClick={async () => {
+                setShowResults(true);
+                await supabase.from('reading_practice_sessions').upsert(
+                  { user_id: user.id, day_number: selectedDay, is_official: isOfficial, practice, answers },
+                  { onConflict: 'user_id,day_number' }
+                );
+              }}>Check answers</button>
             ) : (
               <p style={s.scoreText}>Score: {score} / {practice.questions.length}</p>
             )}
