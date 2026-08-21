@@ -48,6 +48,7 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
   // Autosave transcript as you speak/type/edit, same pattern as Writing.
   useEffect(() => {
     if (!loaded) return;
+    if (!transcript.trim()) return; // Never save empty transcript
     const timer = setTimeout(async () => {
       setSaving(true);
       await supabase.from('speaking_sessions').upsert(
@@ -145,8 +146,15 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
     e.preventDefault();
     if (!transcript.trim()) return;
     setLoading(true); setError(''); setResult(null);
+    const q = question.trim() || `${part} — topic: ${topic}`;
+
+    // Save transcript immediately before scoring so it's never lost.
+    await supabase.from('speaking_sessions').upsert(
+      { user_id: user.id, day_number: selectedDay, part, question: q, transcript, result: null },
+      { onConflict: 'user_id,day_number' }
+    );
+
     try {
-      const q = question.trim() || `${part} — topic: ${topic}`;
       const data = await scoreSpeaking(part, q, transcript);
       setResult(data);
       await supabase.from('speaking_sessions').upsert(
