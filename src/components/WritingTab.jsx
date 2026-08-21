@@ -40,6 +40,7 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
 
   useEffect(() => {
     if (!loaded) return;
+    if (!essay.trim()) return; // Never save an empty essay — prevents phantom 0-word history entries
     const timer = setTimeout(async () => {
       setSaving(true);
       await supabase.from('writing_sessions').upsert(
@@ -55,6 +56,14 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
     e.preventDefault();
     if (!essay.trim()) return;
     setLoading(true); setError(''); setResult(null);
+
+    // Save the essay immediately on submit — before the API call —
+    // so it's never lost even if scoring fails or you switch tabs quickly.
+    await supabase.from('writing_sessions').upsert(
+      { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result: null },
+      { onConflict: 'user_id,day_number' }
+    );
+
     try {
       const data = await scoreWriting(daily.type, daily.prompt, essay);
       setResult(data);
