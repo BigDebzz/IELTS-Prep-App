@@ -107,8 +107,6 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
   }
 
   const isTask2 = activeTask === 'task2';
-  const timer = isTask2 ? timer2 : timer1;
-  const timerLabel = isTask2 ? 'Task 2 — 40 minutes' : 'Task 1 — 20 minutes';
 
   return (
     <section style={s.section}>
@@ -126,7 +124,7 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
         <button style={{ ...s.taskBtn, ...(!isTask2 ? s.taskBtnActive : {}) }} onClick={() => setActiveTask('task1')}>Task 1 Visual (20 min)</button>
       </div>
 
-      {/* TimerBar rendered per-task below, not here */}
+
 
       {isTask2 ? (
         <>
