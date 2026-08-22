@@ -1,208 +1,231 @@
-import { useEffect, useState } from 'react';
-import { scoreWriting } from '../lib/gemini';
-import { WRITING_BAND_DESCRIPTORS, WRITING_TASK2_TYPES, writingPromptForDay } from '../data/ieltsContent';
+import { useCallback, useEffect, useState } from 'react';
+import { scoreWriting, scoreTask1 } from '../lib/gemini';
+import { WRITING_BAND_DESCRIPTORS, WRITING_TASK2_TYPES, writingPromptForDay, task1ForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
+import { useTimer, TimerBar } from '../lib/useTimer';
 
 export default function WritingTab({ user, selectedDay, onNavigateDay }) {
-  const daily = writingPromptForDay(selectedDay);
-  const guide = WRITING_TASK2_TYPES.find(t => t.type === daily.type);
-  const [essay, setEssay] = useState('');
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [loaded, setLoaded] = useState(false);
-  const [showGuide, setShowGuide] = useState(true);
+  const [activeTask, setActiveTask] = useState('task2'); // 'task1' | 'task2'
 
+  const daily2 = writingPromptForDay(selectedDay);
+  const daily1 = task1ForDay(selectedDay);
+
+  // Task 2 state
+  const [essay2, setEssay2] = useState('');
+  const [result2, setResult2] = useState(null);
+  const [loading2, setLoading2] = useState(false);
+  const [saving2, setSaving2] = useState(false);
+  const [loaded2, setLoaded2] = useState(false);
+
+  // Task 1 state
+  const [essay1, setEssay1] = useState('');
+  const [result1, setResult1] = useState(null);
+  const [loading1, setLoading1] = useState(false);
+  const [saving1, setSaving1] = useState(false);
+  const [loaded1, setLoaded1] = useState(false);
+
+  const [error, setError] = useState('');
+  const [showGuide, setShowGuide] = useState(true);
+  const guide2 = WRITING_TASK2_TYPES.find(t => t.type === daily2.type);
+
+  // Timers
+  const handleTask2Expire = useCallback(() => { if (essay2.trim()) handleScore2(); }, [essay2]); // eslint-disable-line react-hooks/exhaustive-deps
+  const handleTask1Expire = useCallback(() => { if (essay1.trim()) handleScore1(); }, [essay1]); // eslint-disable-line react-hooks/exhaustive-deps
+  const timer2 = useTimer(40 * 60, { onExpire: handleTask2Expire });
+  const timer1 = useTimer(20 * 60, { onExpire: handleTask1Expire });
+
+  // Load saved Task 2 session
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setLoaded(false);
-      setEssay('');
-      setResult(null);
-      setError('');
-      const { data } = await supabase
-        .from('writing_sessions')
-        .select('essay, result')
-        .eq('user_id', user.id)
-        .eq('day_number', selectedDay)
-        .maybeSingle();
-      if (!cancelled && data) {
-        setEssay(data.essay || '');
-        setResult(data.result || null);
-      }
-      if (!cancelled) setLoaded(true);
+      setLoaded2(false); setEssay2(''); setResult2(null); setError('');
+      timer2.reset();
+      const { data } = await supabase.from('writing_sessions').select('essay, result').eq('user_id', user.id).eq('day_number', selectedDay).maybeSingle();
+      if (!cancelled && data) { setEssay2(data.essay || ''); setResult2(data.result || null); }
+      if (!cancelled) setLoaded2(true);
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedDay, user.id]);
+  }, [selectedDay, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Load saved Task 1 session (uses day_number + 1000 as a unique offset to avoid conflict)
   useEffect(() => {
-    if (!loaded) return;
-    if (!essay.trim()) return; // Never save an empty essay — prevents phantom 0-word history entries
-    const timer = setTimeout(async () => {
-      setSaving(true);
-      await supabase.from('writing_sessions').upsert(
-        { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result },
-        { onConflict: 'user_id,day_number' }
-      );
-      setSaving(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [essay, loaded]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function handleScore(e) {
-    e.preventDefault();
-    if (!essay.trim()) return;
-    setLoading(true); setError(''); setResult(null);
-
-    // Save the essay immediately on submit — before the API call —
-    // so it's never lost even if scoring fails or you switch tabs quickly.
-    await supabase.from('writing_sessions').upsert(
-      { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result: null },
-      { onConflict: 'user_id,day_number' }
-    );
-
-    try {
-      const data = await scoreWriting(daily.type, daily.prompt, essay);
-      setResult(data);
-      await supabase.from('writing_sessions').upsert(
-        { user_id: user.id, day_number: selectedDay, task_type: daily.type, prompt: daily.prompt, essay, result: data },
-        { onConflict: 'user_id,day_number' }
-      );
-      await supabase.from('mock_scores').insert({
-        user_id: user.id,
-        day_number: selectedDay,
-        writing: data.overall,
-        test_source: 'AI-scored: ' + daily.type,
-      });
-    } catch (err) {
-      setError('Scoring failed: ' + err.message);
+    let cancelled = false;
+    async function load() {
+      setLoaded1(false); setEssay1(''); setResult1(null);
+      timer1.reset();
+      const { data } = await supabase.from('writing_sessions').select('essay, result').eq('user_id', user.id).eq('day_number', selectedDay + 1000).maybeSingle();
+      if (!cancelled && data) { setEssay1(data.essay || ''); setResult1(data.result || null); }
+      if (!cancelled) setLoaded1(true);
     }
-    setLoading(false);
+    load();
+    return () => { cancelled = true; };
+  }, [selectedDay, user.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Autosave Task 2
+  useEffect(() => {
+    if (!loaded2 || !essay2.trim()) return;
+    const t = setTimeout(async () => { setSaving2(true); await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay, task_type: daily2.type, prompt: daily2.prompt, essay: essay2, result: result2 }, { onConflict: 'user_id,day_number' }); setSaving2(false); }, 1000);
+    return () => clearTimeout(t);
+  }, [essay2, loaded2]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Autosave Task 1
+  useEffect(() => {
+    if (!loaded1 || !essay1.trim()) return;
+    const t = setTimeout(async () => { setSaving1(true); await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay + 1000, task_type: daily1.type, prompt: daily1.prompt, essay: essay1, result: result1 }, { onConflict: 'user_id,day_number' }); setSaving1(false); }, 1000);
+    return () => clearTimeout(t);
+  }, [essay1, loaded1]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleScore2(fromTimer = false) {
+    const text = essay2.trim();
+    if (!text) return;
+    setLoading2(true); setError(''); setResult2(null);
+    await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay, task_type: daily2.type, prompt: daily2.prompt, essay: essay2, result: null }, { onConflict: 'user_id,day_number' });
+    try {
+      const data = await scoreWriting(daily2.type, daily2.prompt, text);
+      setResult2(data);
+      await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay, task_type: daily2.type, prompt: daily2.prompt, essay: text, result: data }, { onConflict: 'user_id,day_number' });
+      await supabase.from('mock_scores').insert({ user_id: user.id, day_number: selectedDay, writing: data.overall, test_source: 'AI-scored: ' + daily2.type });
+      timer2.stop();
+    } catch (err) { setError('Scoring failed: ' + err.message); }
+    setLoading2(false);
   }
+
+  async function handleScore1(fromTimer = false) {
+    const text = essay1.trim();
+    if (!text) return;
+    setLoading1(true); setError(''); setResult1(null);
+    await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay + 1000, task_type: daily1.type, prompt: daily1.prompt, essay: essay1, result: null }, { onConflict: 'user_id,day_number' });
+    try {
+      const data = await scoreTask1(daily1.type, daily1.prompt, text);
+      setResult1(data);
+      await supabase.from('writing_sessions').upsert({ user_id: user.id, day_number: selectedDay + 1000, task_type: daily1.type, prompt: daily1.prompt, essay: text, result: data }, { onConflict: 'user_id,day_number' });
+      timer1.stop();
+    } catch (err) { setError('Scoring failed: ' + err.message); }
+    setLoading1(false);
+  }
+
+  const isTask2 = activeTask === 'task2';
+  const timer = isTask2 ? timer2 : timer1;
+  const timerLabel = isTask2 ? 'Task 2 — 40 minutes' : 'Task 1 — 20 minutes';
 
   return (
     <section style={s.section}>
       <h2 style={s.title}>Writing Practice — Day {selectedDay}</h2>
 
-      <SessionHistory
-        user={user}
-        table="writing_sessions"
-        label="Writing"
-        onSelectDay={onNavigateDay}
-        renderItem={(sess) => (
-          <>
-            <div style={hs.itemTop}>
-              <span style={hs.dayTag}>Day {sess.day_number}</span>
-              <span style={hs.typeTag}>{sess.task_type}</span>
-              {sess.result?.overall != null && <span style={hs.scoreTag}>Band {sess.result.overall}</span>}
-            </div>
-            <p style={hs.preview}>{sess.prompt}</p>
-            <p style={hs.metaLine}>{(sess.essay || '').trim().split(/\s+/).filter(Boolean).length} words</p>
-          </>
-        )}
-      />
+      <SessionHistory user={user} table="writing_sessions" label="Writing" onSelectDay={onNavigateDay}
+        renderItem={(sess) => (<>
+          <div style={hs.itemTop}><span style={hs.dayTag}>Day {sess.day_number > 1000 ? sess.day_number - 1000 : sess.day_number}</span><span style={hs.typeTag}>{sess.task_type}</span>{sess.result?.overall != null && <span style={hs.scoreTag}>Band {sess.result.overall}</span>}</div>
+          <p style={hs.preview}>{sess.prompt}</p>
+          <p style={hs.metaLine}>{(sess.essay || '').trim().split(/\s+/).filter(Boolean).length} words</p>
+        </>)} />
 
-      <p style={s.hint}>
-        Today's prompt is a real IELTS Task 2 question type: <strong>{daily.type}</strong>. If this is new to you,
-        read the guide below before writing — it walks through exactly what each paragraph should do.
-      </p>
-
-      <div style={s.promptBox}>
-        <strong>{daily.type}</strong>
-        <p style={s.promptText}>{daily.prompt}</p>
+      <div style={s.taskToggle}>
+        <button style={{ ...s.taskBtn, ...(isTask2 ? s.taskBtnActive : {}) }} onClick={() => setActiveTask('task2')}>Task 2 Essay (40 min)</button>
+        <button style={{ ...s.taskBtn, ...(!isTask2 ? s.taskBtnActive : {}) }} onClick={() => setActiveTask('task1')}>Task 1 Visual (20 min)</button>
       </div>
 
-      <div style={s.guideBox}>
-        <button style={s.guideToggle} onClick={() => setShowGuide(!showGuide)}>
-          {showGuide ? '▾' : '▸'} How to structure this essay type (start here if you're new to IELTS)
-        </button>
-        {showGuide && guide && (
-          <div style={s.guideContent}>
-            {guide.howTo.map((step, i) => (
-              <div key={i} style={s.guideStep}>
-                <p style={s.guideStepTitle}>{i + 1}. {step.part}</p>
-                <p style={s.guideStepText}>{step.guidance}</p>
-              </div>
-            ))}
-            {guide.example && (
-              <div style={s.guideExample}>
-                <strong>Example:</strong> {guide.example}
+      {timer.running && <TimerBar timer={timer} label={timerLabel} />}
+
+      {isTask2 ? (
+        <>
+          <div style={s.promptBox}><strong>{daily2.type}</strong><p style={s.promptText}>{daily2.prompt}</p></div>
+          <div style={s.guideBox}>
+            <button style={s.guideToggle} onClick={() => setShowGuide(!showGuide)}>{showGuide ? '▾' : '▸'} How to structure this essay (read first if you're new)</button>
+            {showGuide && guide2 && (
+              <div style={s.guideContent}>
+                {guide2.howTo.map((step, i) => (<div key={i} style={s.guideStep}><p style={s.guideStepTitle}>{i + 1}. {step.part}</p><p style={s.guideStepText}>{step.guidance}</p></div>))}
+                {guide2.example && <div style={s.guideExample}><strong>Example:</strong> {guide2.example}</div>}
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      <form onSubmit={handleScore} style={s.form}>
-        <textarea
-          style={s.textareaBig}
-          rows={12}
-          placeholder="Write your essay here (aim for 250+ words). Follow the guide above — one paragraph per step."
-          value={essay}
-          onChange={e => setEssay(e.target.value)}
-        />
-        <div style={s.metaRow}>
-          <p style={s.wordCount}>{essay.trim().split(/\s+/).filter(Boolean).length} words</p>
-          <p style={s.saveStatus}>{saving ? 'Saving…' : loaded ? 'Saved' : ''}</p>
-        </div>
-        <button style={s.button} type="submit" disabled={loading}>{loading ? 'Scoring…' : 'Get AI band feedback'}</button>
-      </form>
+          <textarea style={s.textareaBig} rows={12} placeholder="Write your Task 2 essay here (250+ words)" value={essay2} onChange={e => setEssay2(e.target.value)} disabled={timer2.expired} />
+          <div style={s.metaRow}>
+            <p style={s.wordCount}>{essay2.trim().split(/\s+/).filter(Boolean).length} / 250+ words</p>
+            <p style={s.saveStatus}>{saving2 ? 'Saving…' : loaded2 ? 'Saved' : ''}</p>
+          </div>
+          {!timer2.running && !timer2.expired && !result2 && (
+            <button style={s.startBtn} onClick={() => timer2.start()}>▶ Start 40-minute timer and begin</button>
+          )}
+          {(timer2.running || timer2.expired) && !result2 && (
+            <button style={s.button} onClick={() => handleScore2()} disabled={loading2 || !essay2.trim()}>{loading2 ? 'Scoring…' : 'Submit for feedback'}</button>
+          )}
+          {result2 && <ResultCard result={result2} criteriaKeys={['taskResponse', 'coherence', 'lexical', 'grammar']} criteriaLabels={['Task Response', 'Coherence', 'Lexical', 'Grammar']} />}
+        </>
+      ) : (
+        <>
+          <div style={s.promptBox}>
+            <strong>{daily1.type}</strong>
+            <p style={s.promptText}>{daily1.prompt}</p>
+            <p style={s.task1Note}>(Note: In the real exam you would see the actual diagram/map/chart here. Describe it as if you are looking at one showing the topic above.)</p>
+          </div>
+          <div style={s.guideBox}>
+            <button style={s.guideToggle} onClick={() => setShowGuide(!showGuide)}>{showGuide ? '▾' : '▸'} How to approach Task 1: {daily1.type}</button>
+            {showGuide && <p style={s.guideText}>{daily1.howTo}</p>}
+          </div>
+          <textarea style={s.textareaBig} rows={8} placeholder="Write your Task 1 response here (150+ words)" value={essay1} onChange={e => setEssay1(e.target.value)} disabled={timer1.expired} />
+          <div style={s.metaRow}>
+            <p style={s.wordCount}>{essay1.trim().split(/\s+/).filter(Boolean).length} / 150+ words</p>
+            <p style={s.saveStatus}>{saving1 ? 'Saving…' : loaded1 ? 'Saved' : ''}</p>
+          </div>
+          {!timer1.running && !timer1.expired && !result1 && (
+            <button style={s.startBtn} onClick={() => timer1.start()}>▶ Start 20-minute timer and begin</button>
+          )}
+          {(timer1.running || timer1.expired) && !result1 && (
+            <button style={s.button} onClick={() => handleScore1()} disabled={loading1 || !essay1.trim()}>{loading1 ? 'Scoring…' : 'Submit for feedback'}</button>
+          )}
+          {result1 && <ResultCard result={result1} criteriaKeys={['taskAchievement', 'coherence', 'lexical', 'grammar']} criteriaLabels={['Task Achievement', 'Coherence', 'Lexical', 'Grammar']} />}
+        </>
+      )}
 
       {error && <p style={s.error}>{error}</p>}
 
-      {result && (
-        <div style={s.card}>
-          <h3 style={s.overallScore}>Overall: Band {result.overall}</h3>
-          <p style={s.resultHint}>This score reflects how close your essay is to the official band descriptors below — not just whether the AI liked it. Read the specific feedback to see exactly what to fix next time.</p>
-          <div style={s.criteriaGrid}>
-            <div style={s.criterion}><strong>Task Response</strong><br />{result.criteria.taskResponse}</div>
-            <div style={s.criterion}><strong>Coherence & Cohesion</strong><br />{result.criteria.coherence}</div>
-            <div style={s.criterion}><strong>Lexical Resource</strong><br />{result.criteria.lexical}</div>
-            <div style={s.criterion}><strong>Grammar</strong><br />{result.criteria.grammar}</div>
-          </div>
-          <p style={s.feedback}>{result.feedback}</p>
-        </div>
-      )}
-
       <details style={s.descriptorBox}>
-        <summary style={s.descriptorSummary}>Reference: what separates band 7, 8, and 9 (official descriptors)</summary>
-        {[9, 8, 7].map(band => (
-          <div key={band} style={s.bandBlock}>
-            <strong>Band {band}</strong>
-            <p style={s.descLine}>Task Response: {WRITING_BAND_DESCRIPTORS[band].taskResponse}</p>
-            <p style={s.descLine}>Coherence: {WRITING_BAND_DESCRIPTORS[band].coherence}</p>
-            <p style={s.descLine}>Lexical: {WRITING_BAND_DESCRIPTORS[band].lexical}</p>
-            <p style={s.descLine}>Grammar: {WRITING_BAND_DESCRIPTORS[band].grammar}</p>
-          </div>
-        ))}
+        <summary style={s.descriptorSummary}>Reference: official band descriptors 7 / 8 / 9</summary>
+        {[9, 8, 7].map(band => (<div key={band} style={s.bandBlock}><strong>Band {band}</strong><p style={s.descLine}>Task Response: {WRITING_BAND_DESCRIPTORS[band].taskResponse}</p><p style={s.descLine}>Coherence: {WRITING_BAND_DESCRIPTORS[band].coherence}</p><p style={s.descLine}>Lexical: {WRITING_BAND_DESCRIPTORS[band].lexical}</p><p style={s.descLine}>Grammar: {WRITING_BAND_DESCRIPTORS[band].grammar}</p></div>))}
       </details>
     </section>
   );
 }
 
+function ResultCard({ result, criteriaKeys, criteriaLabels }) {
+  return (
+    <div style={s.card}>
+      <h3 style={s.overallScore}>Overall: Band {result.overall}</h3>
+      <p style={s.resultHint}>Scored against official IELTS band descriptors. Read the specific feedback to know exactly what to fix.</p>
+      <div style={s.criteriaGrid}>
+        {criteriaKeys.map((k, i) => (<div key={k} style={s.criterion}><strong>{criteriaLabels[i]}</strong><br />{result.criteria[k]}</div>))}
+      </div>
+      <p style={s.feedback}>{result.feedback}</p>
+    </div>
+  );
+}
+
 const s = {
-  section: { background: '#121212', borderRadius: 12, padding: 20 },
-  title: { fontSize: 18, margin: '0 0 8px' },
-  hint: { color: '#a3a3a3', fontSize: 12, marginBottom: 12, lineHeight: 1.5 },
+  section: { background: '#121212', borderRadius: 16, padding: 20 },
+  title: { fontSize: 18, margin: '0 0 12px' },
+  taskToggle: { display: 'flex', gap: 8, marginBottom: 16 },
+  taskBtn: { flex: 1, padding: '10px 0', borderRadius: 10, border: '1px solid #2a2a2a', background: 'none', color: '#a3a3a3', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  taskBtnActive: { background: '#8b8cf8', border: 'none', color: '#fff' },
+  startBtn: { width: '100%', padding: '12px', borderRadius: 10, border: 'none', background: '#4ade80', color: '#000', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10 },
   promptBox: { background: '#000000', borderRadius: 8, padding: 14, marginBottom: 12, fontSize: 13, color: '#a5b4fc' },
   promptText: { color: '#f5f5f5', fontSize: 15, marginTop: 8, lineHeight: 1.5 },
+  task1Note: { color: '#a3a3a3', fontSize: 11, marginTop: 8, fontStyle: 'italic' },
   guideBox: { background: '#000000', borderRadius: 8, marginBottom: 16, overflow: 'hidden' },
   guideToggle: { width: '100%', textAlign: 'left', padding: 14, background: 'none', border: 'none', color: '#8b8cf8', fontSize: 14, fontWeight: 600, cursor: 'pointer' },
   guideContent: { padding: '0 14px 14px' },
+  guideText: { fontSize: 13, color: '#cbd5e1', lineHeight: 1.6, padding: '0 14px 14px', margin: 0 },
   guideStep: { marginBottom: 12 },
   guideStepTitle: { fontSize: 13, fontWeight: 700, color: '#f5f5f5', margin: '0 0 4px' },
   guideStepText: { fontSize: 13, color: '#cbd5e1', lineHeight: 1.5, margin: 0 },
   guideExample: { fontSize: 12, color: '#a3a3a3', fontStyle: 'italic', marginTop: 10, paddingTop: 10, borderTop: '1px solid #2a2a2a', lineHeight: 1.5 },
-  form: { display: 'flex', flexDirection: 'column', gap: 10 },
-  textareaBig: { padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', lineHeight: 1.5 },
-  metaRow: { display: 'flex', justifyContent: 'space-between' },
+  textareaBig: { width: '100%', padding: 12, borderRadius: 8, border: '1px solid #2a2a2a', background: '#000000', color: '#f5f5f5', fontSize: 14, resize: 'vertical', lineHeight: 1.5 },
+  metaRow: { display: 'flex', justifyContent: 'space-between', margin: '6px 0 10px' },
   wordCount: { fontSize: 12, color: '#64748b', margin: 0 },
   saveStatus: { fontSize: 12, color: '#4ade80', margin: 0 },
-  button: { padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
-  error: { color: '#f87171', fontSize: 13 },
+  button: { width: '100%', padding: '10px 16px', borderRadius: 8, border: 'none', background: '#6366f1', color: 'white', fontWeight: 600, cursor: 'pointer' },
+  error: { color: '#f87171', fontSize: 13, marginTop: 8 },
   card: { background: '#000000', borderRadius: 10, padding: 16, marginTop: 16 },
   overallScore: { fontSize: 20, color: '#4ade80', margin: '0 0 8px' },
   resultHint: { fontSize: 12, color: '#a3a3a3', marginBottom: 12, lineHeight: 1.5 },
