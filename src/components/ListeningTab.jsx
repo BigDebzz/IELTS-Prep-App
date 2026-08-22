@@ -3,6 +3,7 @@ import { generateListening } from '../lib/gemini';
 import { LISTENING_SECTIONS, LISTENING_GENERAL_TIPS, topicForDay } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
+import { useTimer, TimerBar } from '../lib/useTimer';
 
 export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
   const dayTopic = topicForDay(selectedDay);
@@ -16,6 +17,7 @@ export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
   const [loaded, setLoaded] = useState(false);
 
   const sectionInfo = LISTENING_SECTIONS.find(s2 => s2.section === section);
+  const timer = useTimer(30 * 60, { onExpire: () => setShowResults(true) });
 
   // Load any saved session (script + answers) for this day when the day changes.
   useEffect(() => {
@@ -58,9 +60,11 @@ export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
 
   async function handleGenerate() {
     setLoading(true); setError(''); setPractice(null); setShowResults(false); setAnswers({});
+    timer.reset();
     try {
       const data = await generateListening(section, dayTopic);
       setPractice(data);
+      timer.start();
     } catch (err) {
       setError('Generation failed: ' + err.message);
     }
@@ -82,61 +86,35 @@ export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
     setSpeaking(false);
   }
 
-  const score = practice ? practice.questions.filter(q => (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase()).length : 0;
+  // Flatten all questions across blocks for scoring
+  const allQuestions = practice ? (practice.blocks || []).flatMap(b => b.questions) : [];
+  const score = allQuestions.filter(q => (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase()).length;
 
   return (
     <section style={s.section}>
       <h2 style={s.title}>Listening Practice — Day {selectedDay}</h2>
 
-      <SessionHistory
-        user={user}
-        table="listening_sessions"
-        label="Listening"
-        onSelectDay={onNavigateDay}
-        renderItem={(sess) => (
-          <>
-            <div style={hs.itemTop}>
-              <span style={hs.dayTag}>Day {sess.day_number}</span>
-              <span style={hs.typeTag}>Section {sess.section}</span>
-            </div>
-            <p style={hs.preview}>{sess.practice?.instructions || 'Listening practice'}</p>
-            <p style={hs.metaLine}>{Object.keys(sess.answers || {}).length} answers given</p>
-          </>
-        )}
-      />
-      <p style={s.hint}>
-        Today's topic: <strong style={{ color: '#8b8cf8' }}>{dayTopic}</strong>. Honest note: there's no free, legal
-        way to bake in real IELTS recordings. This uses your browser's built-in text-to-speech to read an AI-written
-        script in a real IELTS section format — good for practicing note-taking and question types, but the voice is
-        robotic, not a real exam recording. Your session (script + answers) autosaves.
-      </p>
+      <SessionHistory user={user} table="listening_sessions" label="Listening" onSelectDay={onNavigateDay}
+        renderItem={(sess) => (<><div style={hs.itemTop}><span style={hs.dayTag}>Day {sess.day_number}</span><span style={hs.typeTag}>Section {sess.section}</span></div><p style={hs.preview}>{sess.practice?.blocks?.[0]?.instructions || 'Listening practice'}</p><p style={hs.metaLine}>{Object.keys(sess.answers || {}).length} answers given</p></>)} />
 
-      <div style={s.ruleBox}>
-        <strong>Section {section}:</strong> {sectionInfo.style} — {sectionInfo.commonTypes}
-      </div>
+      <p style={s.hint}>Today's topic: <strong style={{ color: '#8b8cf8' }}>{dayTopic}</strong>. Uses browser text-to-speech — not a real recording. Timer starts when you generate the practice.</p>
 
-      {sectionInfo.howTo && (
-        <div style={s.howToBox}>
-          <strong>How to approach this section:</strong> {sectionInfo.howTo}
-        </div>
-      )}
+      {timer.running && <TimerBar timer={timer} label="Listening — 30 minutes" />}
+
+      <div style={s.ruleBox}><strong>Section {section}:</strong> {sectionInfo.style} — {sectionInfo.commonTypes}</div>
+      {sectionInfo.howTo && <div style={s.howToBox}><strong>How to approach this section:</strong> {sectionInfo.howTo}</div>}
 
       <details style={s.tipsBox}>
-        <summary style={s.tipsSummary}>General Listening technique (start here if you're new to IELTS)</summary>
-        {LISTENING_GENERAL_TIPS.map((t, i) => (
-          <div key={i} style={s.tipItem}>
-            <p style={s.tipTitle}>{t.tip}</p>
-            <p style={s.tipDetail}>{t.detail}</p>
-          </div>
-        ))}
+        <summary style={s.tipsSummary}>General Listening technique</summary>
+        {LISTENING_GENERAL_TIPS.map((t, i) => (<div key={i} style={s.tipItem}><p style={s.tipTitle}>{t.tip}</p><p style={s.tipDetail}>{t.detail}</p></div>))}
       </details>
 
       <div style={s.form}>
-        <select style={s.input} value={section} onChange={e => setSection(Number(e.target.value))}>
+        <select style={s.input} value={section} onChange={e => { setSection(Number(e.target.value)); timer.reset(); }}>
           {LISTENING_SECTIONS.map(sec => <option key={sec.section} value={sec.section}>Section {sec.section}</option>)}
         </select>
         <button style={s.button} onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Generating…' : practice ? 'Regenerate for today' : 'Generate today\'s practice'}
+          {loading ? 'Generating…' : practice ? 'Regenerate' : 'Generate practice (starts timer)'}
         </button>
       </div>
 
@@ -145,42 +123,33 @@ export default function ListeningTab({ user, selectedDay, onNavigateDay }) {
       {practice && (
         <div style={s.card}>
           <div style={s.audioControls}>
-            <button style={s.button} onClick={speaking ? stopPlayback : playScript}>
-              {speaking ? '⏸ Stop' : '▶ Play audio'}
-            </button>
+            <button style={s.button} onClick={speaking ? stopPlayback : playScript}>{speaking ? '⏸ Stop' : '▶ Play audio'}</button>
             <details style={s.transcriptToggle}>
-              <summary>Show transcript (use only after listening once)</summary>
+              <summary>Show transcript (use after listening)</summary>
               <p style={s.transcript}>{practice.script}</p>
             </details>
           </div>
 
-          <p style={s.instructions}>{practice.instructions}</p>
-          {practice.questions.map(q => (
-            <div key={q.number} style={s.qRow}>
-              <label style={s.qLabel}>{q.number}. {q.question}</label>
-              <input
-                style={s.qInput}
-                value={answers[q.number] || ''}
-                onChange={e => setAnswers({ ...answers, [q.number]: e.target.value })}
-                disabled={showResults}
-              />
-              {showResults && (
-                <span style={{ color: (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase() ? '#4ade80' : '#f87171', fontSize: 12 }}>
-                  Correct answer: {q.answer}
-                </span>
-              )}
+          {(practice.blocks || []).map((block, bi) => (
+            <div key={bi}>
+              <p style={s.instructions}>{block.instructions}</p>
+              {(block.questions || []).map(q => (
+                <div key={q.number} style={s.qRow}>
+                  <label style={s.qLabel}>{q.number}. {q.question}</label>
+                  <input style={s.qInput} value={answers[q.number] || ''} onChange={e => setAnswers({ ...answers, [q.number]: e.target.value })} disabled={showResults} />
+                  {showResults && <span style={{ color: (answers[q.number] || '').trim().toLowerCase() === String(q.answer).trim().toLowerCase() ? '#4ade80' : '#f87171', fontSize: 12 }}>Answer: {q.answer}</span>}
+                </div>
+              ))}
             </div>
           ))}
+
           {!showResults ? (
             <button style={s.button} onClick={async () => {
-              setShowResults(true);
-              await supabase.from('listening_sessions').upsert(
-                { user_id: user.id, day_number: selectedDay, section, practice, answers },
-                { onConflict: 'user_id,day_number' }
-              );
+              setShowResults(true); timer.stop();
+              await supabase.from('listening_sessions').upsert({ user_id: user.id, day_number: selectedDay, section, practice, answers }, { onConflict: 'user_id,day_number' });
             }}>Check answers</button>
           ) : (
-            <p style={s.scoreText}>Score: {score} / {practice.questions.length}</p>
+            <p style={s.scoreText}>Score: {score} / {allQuestions.length}</p>
           )}
         </div>
       )}
