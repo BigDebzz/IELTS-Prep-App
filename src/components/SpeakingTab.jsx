@@ -3,6 +3,10 @@ import { scoreSpeaking } from '../lib/gemini';
 import { SPEAKING_STRUCTURE, SPEAKING_TOPICS, SPEAKING_BAND_DESCRIPTORS } from '../data/ieltsContent';
 import { supabase } from '../lib/supabase';
 import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
+import { useTimer, TimerBar } from '../lib/useTimer';
+
+const PART_TIMES = { part1: 5 * 60, part2: 3 * 60, part3: 5 * 60 };
+const PART_LABELS = { part1: 'Part 1 — 5 minutes', part2: 'Part 2 — 3 minutes (inc. prep)', part3: 'Part 3 — 5 minutes' };
 
 export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
   const [part, setPart] = useState('part1');
@@ -20,6 +24,7 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
   const manualStopRef = useRef(false);
 
   const info = SPEAKING_STRUCTURE[part];
+  const timer = useTimer(PART_TIMES[part], { onExpire: () => { stopVoiceInput(); } });
 
   // Load any saved session for this day when the day changes.
   useEffect(() => {
@@ -135,11 +140,13 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
     recognitionRef.current = firstSession;
     firstSession.start();
     setRecording(true);
+    timer.start();
   }
 
   function stopVoiceInput() {
     manualStopRef.current = true;
     recognitionRef.current?.stop();
+    timer.stop();
   }
 
   async function handleScore(e) {
@@ -197,7 +204,7 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
 
       <p style={s.hint}>Speak using your browser's voice input (or type) — feedback is scored against real IELTS Speaking descriptors. Pronunciation can't be judged from text, so the AI will say so honestly rather than guess.</p>
 
-      <select style={s.input} value={part} onChange={e => setPart(e.target.value)}>
+      <select style={s.input} value={part} onChange={e => { setPart(e.target.value); timer.reset(PART_TIMES[e.target.value]); }}>
         <option value="part1">Part 1 — Personal questions</option>
         <option value="part2">Part 2 — Cue card</option>
         <option value="part3">Part 3 — Abstract discussion</option>
@@ -220,8 +227,9 @@ export default function SpeakingTab({ user, selectedDay, onNavigateDay }) {
       <input style={s.input} placeholder="Optional: paste the exact question/cue card text" value={question} onChange={e => setQuestion(e.target.value)} />
 
       <div style={s.recordRow}>
+        {timer.running && <TimerBar timer={timer} label={PART_LABELS[part]} />}
         <button style={s.button} onClick={recording ? stopVoiceInput : startVoiceInput}>
-          {recording ? '⏹ Stop recording' : '🎙 Speak your answer'}
+          {recording ? '⏹ Stop recording' : '🎙 Speak your answer (starts timer)'}
         </button>
         <span style={s.orText}>or type below</span>
       </div>
