@@ -126,7 +126,7 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
         <button style={{ ...s.taskBtn, ...(!isTask2 ? s.taskBtnActive : {}) }} onClick={() => setActiveTask('task1')}>Task 1 Visual (20 min)</button>
       </div>
 
-      {timer.running && <TimerBar timer={timer} label={timerLabel} />}
+      {/* TimerBar rendered per-task below, not here */}
 
       {isTask2 ? (
         <>
@@ -140,14 +140,12 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
               </div>
             )}
           </div>
+          <TimerBar timer={timer2} label="Task 2 — 40 minutes" onStart={() => timer2.start()} />
           <textarea style={s.textareaBig} rows={12} placeholder="Write your Task 2 essay here (250+ words)" value={essay2} onChange={e => setEssay2(e.target.value)} disabled={timer2.expired} />
           <div style={s.metaRow}>
             <p style={s.wordCount}>{essay2.trim().split(/\s+/).filter(Boolean).length} / 250+ words</p>
             <p style={s.saveStatus}>{saving2 ? 'Saving…' : loaded2 ? 'Saved' : ''}</p>
           </div>
-          {!timer2.running && !timer2.expired && !result2 && (
-            <button style={s.startBtn} onClick={() => timer2.start()}>▶ Start 40-minute timer and begin</button>
-          )}
           {(timer2.running || timer2.expired) && !result2 && (
             <button style={s.button} onClick={() => handleScore2()} disabled={loading2 || !essay2.trim()}>{loading2 ? 'Scoring…' : 'Submit for feedback'}</button>
           )}
@@ -164,14 +162,12 @@ export default function WritingTab({ user, selectedDay, onNavigateDay }) {
             <button style={s.guideToggle} onClick={() => setShowGuide(!showGuide)}>{showGuide ? '▾' : '▸'} How to approach Task 1: {daily1.type}</button>
             {showGuide && <p style={s.guideText}>{daily1.howTo}</p>}
           </div>
+          <TimerBar timer={timer1} label="Task 1 — 20 minutes" onStart={() => timer1.start()} />
           <textarea style={s.textareaBig} rows={8} placeholder="Write your Task 1 response here (150+ words)" value={essay1} onChange={e => setEssay1(e.target.value)} disabled={timer1.expired} />
           <div style={s.metaRow}>
             <p style={s.wordCount}>{essay1.trim().split(/\s+/).filter(Boolean).length} / 150+ words</p>
             <p style={s.saveStatus}>{saving1 ? 'Saving…' : loaded1 ? 'Saved' : ''}</p>
           </div>
-          {!timer1.running && !timer1.expired && !result1 && (
-            <button style={s.startBtn} onClick={() => timer1.start()}>▶ Start 20-minute timer and begin</button>
-          )}
           {(timer1.running || timer1.expired) && !result1 && (
             <button style={s.button} onClick={() => handleScore1()} disabled={loading1 || !essay1.trim()}>{loading1 ? 'Scoring…' : 'Submit for feedback'}</button>
           )}
