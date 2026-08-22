@@ -6,6 +6,7 @@ import { READING_QUESTION_TYPES, READING_GENERAL_TIPS, topicForDay } from '../da
 import { OFFICIAL_PASSAGES } from '../data/officialReadingPassages';
 import { theme } from '../styles/theme';
 import SessionHistory, { historyItemStyles as hs } from './SessionHistory';
+import { useTimer, TimerBar } from '../lib/useTimer';
 
 function cleanWord(raw) {
   return raw.replace(/[^a-zA-Z'-]/g, '');
@@ -22,6 +23,7 @@ export default function ReadingTab({ user, selectedDay, onNavigateDay }) {
 
   const [lookup, setLookup] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const timer = useTimer(20 * 60, { onExpire: () => setShowResults(true) });
   const [savedWord, setSavedWord] = useState('');
   const [audioError, setAudioError] = useState('');
   const [bookmark, setBookmark] = useState(null);
@@ -155,12 +157,14 @@ export default function ReadingTab({ user, selectedDay, onNavigateDay }) {
 
   async function handleGenerateAI() {
     setLoading(true); setError(''); setShowResults(false); setAnswers({}); setLookup(null);
+    timer.reset();
     try {
       const randomType = READING_QUESTION_TYPES[Math.floor(Math.random() * READING_QUESTION_TYPES.length)];
       const styleRef = OFFICIAL_PASSAGES[Math.floor(Math.random() * OFFICIAL_PASSAGES.length)].passage;
       const data = await generateReading(randomType.type, dayTopic, styleRef);
       setPractice({ ...data, title: dayTopic, questionType: randomType.type });
       setIsOfficial(false);
+      timer.start();
     } catch (err) {
       setError('Generation failed: ' + err.message);
     }
@@ -268,11 +272,13 @@ export default function ReadingTab({ user, selectedDay, onNavigateDay }) {
 
       {!officialForDay && !practice && (
         <button style={s.button} onClick={handleGenerateAI} disabled={loading}>
-          {loading ? 'Generating…' : `Generate today's passage`}
+          {loading ? 'Generating…' : `Generate today's passage (starts 20-min timer)`}
         </button>
       )}
 
       {error && <p style={s.error}>{error}</p>}
+
+      {practice && timer.running && <TimerBar timer={timer} label="Reading — 20 minutes per passage" />}
 
       {practice && (
         <div style={s.layout}>
