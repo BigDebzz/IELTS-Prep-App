@@ -16,6 +16,9 @@ async function callGemini(mode, payload) {
 export const scoreWriting = (taskType, prompt, essay) =>
   callGemini('score_writing', { taskType, prompt, essay });
 
+export const scoreTask1 = (taskType, prompt, essay) =>
+  callGemini('score_task1', { taskType, prompt, essay });
+
 export const scoreSpeaking = (part, question, transcript) =>
   callGemini('score_speaking', { part, question, transcript });
 
