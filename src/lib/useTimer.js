@@ -47,25 +47,27 @@ export function useTimer(totalSeconds, { onExpire, autoStart = false } = {}) {
   return { secondsLeft, running, expired, display, urgent, pct, start, stop, reset };
 }
 
-// Reusable timer bar component — drop into any tab
-export function TimerBar({ timer, label }) {
-  if (!timer.running && !timer.expired && timer.secondsLeft === (timer.pct === 1 ? timer.secondsLeft : timer.secondsLeft)) {
-    // Not started yet — show start prompt, not a bar
-  }
+// Reusable timer bar — always visible once shown, shows start button when not yet running
+export function TimerBar({ timer, label, onStart }) {
   return (
     <div style={ts.wrap}>
       <div style={ts.row}>
         <span style={ts.label}>{label}</span>
-        <span style={{ ...ts.time, color: timer.urgent ? '#f87171' : timer.expired ? '#f87171' : '#f5f5f5' }}>
-          {timer.expired ? 'Time up — submitted' : timer.display}
-        </span>
+        {!timer.running && !timer.expired && (
+          <button style={ts.startBtn} onClick={onStart || timer.start}>▶ Start</button>
+        )}
+        {(timer.running || timer.expired) && (
+          <span style={{ ...ts.time, color: (timer.urgent || timer.expired) ? '#f87171' : '#f5f5f5' }}>
+            {timer.expired ? '⏰ Time up' : timer.display}
+          </span>
+        )}
       </div>
       <div style={ts.track}>
         <div style={{
           ...ts.fill,
-          width: `${timer.pct * 100}%`,
-          background: timer.urgent ? '#f87171' : '#8b8cf8',
-          transition: 'width 1s linear, background 0.3s',
+          width: `${Math.max(0, timer.pct) * 100}%`,
+          background: (timer.urgent || timer.expired) ? '#f87171' : '#8b8cf8',
+          transition: timer.running ? 'width 1s linear, background 0.3s' : 'none',
         }} />
       </div>
     </div>
@@ -79,4 +81,5 @@ const ts = {
   time: { fontSize: 16, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
   track: { height: 4, background: '#2a2a2a', borderRadius: 2, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 2 },
+  startBtn: { fontSize: 12, padding: '4px 12px', borderRadius: 20, border: 'none', background: '#4ade80', color: '#000', fontWeight: 700, cursor: 'pointer' },
 };
