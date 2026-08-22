@@ -14,17 +14,7 @@ function dayFromStart(startDate) {
   const start = new Date(startDate);
   const now = new Date();
   const diff = Math.floor((now.setHours(0,0,0,0) - start.setHours(0,0,0,0)) / 86400000);
-  return Math.min(30, Math.max(1, diff + 1));
-}
-
-// Unclamped version — used only to detect and explain when you're past Day 30,
-// since the clamp above used to silently keep showing Day 30's content forever
-// with no indication that the 30-day plan had actually ended.
-function rawDayFromStart(startDate) {
-  const start = new Date(startDate);
-  const now = new Date();
-  const diff = Math.floor((now.setHours(0,0,0,0) - start.setHours(0,0,0,0)) / 86400000);
-  return diff + 1;
+  return Math.max(1, diff + 1); // No upper cap — plan continues indefinitely past day 30
 }
 
 export default function Dashboard({ user }) {
@@ -50,13 +40,11 @@ export default function Dashboard({ user }) {
   const initials = (user.email || '?').slice(0, 2).toUpperCase();
   const week = weekForDay(selectedDay);
   const today = dayFromStart(startDate);
-  const rawToday = rawDayFromStart(startDate);
-  const planEnded = rawToday > 30;
+  const [showDayPicker, setShowDayPicker] = useState(false);
 
   return (
     <div style={s.page}>
       <div style={s.shell}>
-        {/* Top nav — pill-shaped like the reference */}
         <header style={s.header}>
           <div style={s.brand}>
             <span style={s.brandMark}>◆</span>
@@ -75,41 +63,36 @@ export default function Dashboard({ user }) {
           </div>
         </header>
 
-        {/* Day calendar strip — borrowed from reference's month calendar concept */}
-        {planEnded && (
-          <div style={s.planEndedBanner}>
-            Your 30-day plan finished {rawToday - 30} day{rawToday - 30 === 1 ? '' : 's'} ago (based on your start date).
-            You're currently viewing Day 30's content, which repeats — Vocabulary's daily word batch and the plan
-            checklist stay fixed at Day 30 rather than continuing to rotate. Reset your start date below to begin a
-            new 30-day cycle for fresh content, or manually click through different day numbers to review past days.
-          </div>
-        )}
+        {/* Compact day strip — collapsed by default so content comes first */}
         <div style={s.dayBar}>
           <div style={s.dayBarTop}>
-            <div>
-              <p style={s.dayBarLabel}>Day {selectedDay} of 30{selectedDay === today ? ' · Today' : ''}</p>
-              {week && <p style={s.weekLabel}>{week.label}</p>}
-            </div>
+            <button style={s.dayToggle} onClick={() => setShowDayPicker(!showDayPicker)}>
+              {showDayPicker ? '▾' : '▸'} Day {selectedDay}{selectedDay === today ? ' · Today' : ''}
+              {week && <span style={s.weekChip}>{week.label}</span>}
+            </button>
             <label style={s.dateLabel}>
               Start date
               <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={s.dateInput} />
             </label>
           </div>
-          <div style={s.dayPills}>
-            {Array.from({ length: 30 }, (_, i) => i + 1).map(d => (
-              <button
-                key={d}
-                onClick={() => setSelectedDay(d)}
-                style={{
-                  ...s.dayPill,
-                  ...(d === selectedDay ? s.dayPillActive : {}),
-                  ...(d === today && d !== selectedDay ? s.dayPillToday : {}),
-                }}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
+          {showDayPicker && (
+            <div style={s.dayPills}>
+              {Array.from({ length: Math.max(30, today + 6) }, (_, i) => i + 1).map(d => (
+                <button
+                  key={d}
+                  onClick={() => { setSelectedDay(d); setShowDayPicker(false); }}
+                  style={{
+                    ...s.dayPill,
+                    ...(d === selectedDay ? s.dayPillActive : {}),
+                    ...(d === today && d !== selectedDay ? s.dayPillToday : {}),
+                    ...(d > 30 ? s.dayPillExtended : {}),
+                  }}
+                >
+                  {d}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <main style={s.main}>
@@ -143,16 +126,16 @@ const s = {
   headerRight: { display: 'flex', alignItems: 'center', gap: 10 },
   avatar: { width: 34, height: 34, borderRadius: '50%', background: theme.colors.lavenderLight, color: theme.colors.lavender, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700 },
   logoutBtn: { border: 'none', background: 'none', color: theme.colors.textMuted, fontSize: 12, cursor: 'pointer' },
-  planEndedBanner: { background: theme.colors.coral + '15', border: `1px solid ${theme.colors.coral}`, borderRadius: theme.radius.card, padding: '12px 16px', marginBottom: 16, fontSize: 12, color: theme.colors.coral, lineHeight: 1.5 },
-  dayBar: { background: theme.colors.card, borderRadius: theme.radius.card, padding: '16px 20px', marginBottom: 16, boxShadow: theme.shadow.card },
-  dayBarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10, marginBottom: 12 },
-  dayBarLabel: { fontSize: 16, fontWeight: 700, color: theme.colors.text, margin: 0 },
-  weekLabel: { fontSize: 12, color: theme.colors.lavender, margin: '2px 0 0' },
+  dayBar: { background: theme.colors.card, borderRadius: theme.radius.card, padding: '12px 16px', marginBottom: 16, boxShadow: theme.shadow.card },
+  dayBarTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
+  dayToggle: { background: 'none', border: 'none', color: theme.colors.text, fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: 0 },
+  weekChip: { fontSize: 10, color: theme.colors.lavender, background: theme.colors.lavenderLight, padding: '2px 8px', borderRadius: 20, fontWeight: 400 },
   dateLabel: { fontSize: 11, color: theme.colors.textMuted, display: 'flex', flexDirection: 'column', gap: 4 },
   dateInput: { border: `1px solid ${theme.colors.border}`, borderRadius: theme.radius.input, padding: '4px 10px', fontSize: 12, color: theme.colors.text, background: theme.colors.bg },
-  dayPills: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  dayPills: { display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 12 },
   dayPill: { width: 30, height: 30, borderRadius: '50%', border: 'none', background: theme.colors.bg, color: theme.colors.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer' },
   dayPillActive: { background: theme.colors.lavender, color: '#fff' },
   dayPillToday: { boxShadow: `0 0 0 2px ${theme.colors.olive}` },
+  dayPillExtended: { opacity: 0.7 },
   main: {},
 };
