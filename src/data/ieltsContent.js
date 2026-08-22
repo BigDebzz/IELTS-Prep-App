@@ -317,6 +317,60 @@ export function writingPromptForDay(day) {
   return { type: type.type, prompt: templates[type.type], topic };
 }
 
+// Real IELTS Academic Task 1 visual types — based on what actually appears in
+// Cambridge IELTS books (13, 14, 15, 16 Academic). These cycle daily alongside
+// Task 2, giving a different visual type each day so you practice all of them.
+export const TASK1_TYPES = [
+  {
+    type: 'Two Maps (Change Over Time)',
+    prompt: (topic) => `The two maps below show ${topic} in 2005 and in 2020.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Describe what changed between the two maps — what was added, removed, moved, or redesigned. Group changes by area/zone rather than listing them one by one. Always include an overview of the biggest overall change (e.g. "The area underwent significant development, with the addition of... and the removal of...").',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+  {
+    type: 'Line Graph',
+    prompt: (topic) => `The graph below shows changes in ${topic} between 1990 and 2020.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Describe the overall trend first (rising, falling, fluctuating) then pick out the most significant data points (highest, lowest, steepest change). Never describe every single data point — select and group.',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+  {
+    type: 'Bar Chart',
+    prompt: (topic) => `The chart below shows data about ${topic} in five different countries.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Compare the highest and lowest categories clearly. Group similar countries/categories together rather than going through them one by one. The overview should note the most striking comparison.',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+  {
+    type: 'Pie Charts',
+    prompt: (topic) => `The pie charts below show the proportion of ${topic} in 2000 and 2020.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Focus on the largest and smallest segments, and any that changed significantly between the two charts. Use fractions/percentages naturally: "approximately a third," "just over a quarter."',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+  {
+    type: 'Process Diagram',
+    prompt: (topic) => `The diagram below shows the process of ${topic}.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Describe each stage in sequence using passive voice and sequencing words ("First... Subsequently... Finally..."). No opinions — just accurately describe what happens at each stage and in what order.',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+  {
+    type: 'Table',
+    prompt: (topic) => `The table below shows information about ${topic} in six countries.\n\nSummarise the information by selecting and reporting the main features, and make comparisons where relevant.`,
+    howTo: 'Never describe every cell — that\'s the most common mistake. Select the most notable values (highest, lowest, most similar, most different) and group your comparisons logically by row or column.',
+    timeMinutes: 20,
+    wordMin: 150,
+  },
+];
+
+export function task1ForDay(day) {
+  const topic = topicForDay(day);
+  const t1 = TASK1_TYPES[(day - 1) % TASK1_TYPES.length];
+  return { ...t1, prompt: t1.prompt(topic), topic };
+}
+
 // The Daily Lesson curriculum. Each day teaches ONE real technique before any
 // testing happens, rotating through all 4 skills across the 30-day plan. Every
 // lesson pulls from the genuine content already defined above (band descriptors,
