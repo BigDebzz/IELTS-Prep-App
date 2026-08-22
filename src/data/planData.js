@@ -6,8 +6,20 @@ export const WEEKS = [
   { range: [22, 30], label: 'Week 4 — Full Mocks & Refinement', focus: 'Mock-test cycle + targeted error correction only' },
 ];
 
+// Continuous practice phases — apply to days 31+ in repeating 7-day cycles.
+// The plan never ends; difficulty and focus shift every week.
+const EXTENDED_PHASES = [
+  { label: 'Extended: Accuracy Week', focus: 'Focus on eliminating your most repeated errors — review your error log and target weak spots only' },
+  { label: 'Extended: Fluency Week', focus: 'Write and speak faster without stopping to check — prioritise completing full responses under time pressure' },
+  { label: 'Extended: Vocabulary Week', focus: 'Every task this week: use at least 5 words from your saved vocabulary list — actively apply what you\'ve learned' },
+  { label: 'Extended: Mock Week', focus: 'Full exam simulation — timed, all four skills, no looking at guides, treat it as the real test' },
+];
+
 export function weekForDay(day) {
-  return WEEKS.find(w => day >= w.range[0] && day <= w.range[1]);
+  if (day <= 30) return WEEKS.find(w => day >= w.range[0] && day <= w.range[1]);
+  // Days 31+: cycle through extended phases in 7-day blocks
+  const phaseIndex = Math.floor((day - 31) / 7) % EXTENDED_PHASES.length;
+  return { ...EXTENDED_PHASES[phaseIndex], range: null };
 }
 
 const DAILY_CONSTANTS = [
@@ -32,7 +44,25 @@ const SKILL_BUILD_TEMPLATE = [
 
 const FULL_MOCK_DAYS = [22, 25, 28];
 
+// Extended-phase daily tasks — rotate based on which extended phase week you're in.
+function getExtendedTasks(day) {
+  const phaseIndex = Math.floor((day - 31) / 7) % EXTENDED_PHASES.length;
+  const baseTasks = [...DAILY_CONSTANTS, ...SKILL_BUILD_TEMPLATE];
+  const phaseExtras = [
+    // Accuracy week
+    [{ skill: 'review', title: 'Review your Writing History — find one repeated error and rewrite that sentence correctly 3 times' }],
+    // Fluency week
+    [{ skill: 'writing', title: 'Timed writing: set a 40-minute timer, write a full Task 2 without stopping or editing — submit whatever you have when time runs out' }],
+    // Vocabulary week
+    [{ skill: 'vocabulary', title: 'Before writing today, pick 5 words from your Saved Words list and plan how you will use them in your essay' }],
+    // Mock week
+    [{ skill: 'mock', title: 'Full timed mock: all 4 skills back to back with no guides open — treat it as the real exam' }],
+  ];
+  return [...baseTasks, ...(phaseExtras[phaseIndex] || [])];
+}
+
 export function getTasksForDay(day) {
+  if (day > 30) return getExtendedTasks(day);
   const tasks = [...DAILY_CONSTANTS];
   if (DAY_SPECIFIC[day]) { tasks.push(...DAY_SPECIFIC[day]); return tasks; }
   if (FULL_MOCK_DAYS.includes(day)) {
